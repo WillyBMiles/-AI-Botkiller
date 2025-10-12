@@ -16,6 +16,17 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private bool enableDoubleJump = true;
     [SerializeField] private float doubleJumpHeight = 2f;
     
+    [Header("Wall Run Settings")]
+    [SerializeField] private bool enableWallRun = true;
+    [SerializeField] private float wallRunMinAngle = 30f;
+    [SerializeField] private float wallRunGravity = -8f;
+    [SerializeField] private float wallRunSlideGravity = -15f;
+    [SerializeField] private float wallJumpUpForce = 12f;
+    [SerializeField] private float wallJumpOutForce = 10f;
+    [SerializeField] private float wallCheckDistance = 0.7f;
+    [SerializeField] private LayerMask wallLayer;
+    [SerializeField] private float wallRunCameraTilt = 15f;
+    
     [Header("Mouse Look Settings")]
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float maxLookAngle = 90f;
@@ -70,6 +81,13 @@ public class PlayerController : MonoBehaviour
     // Ground check
     private bool isGrounded;
     
+    // Wall run variables
+    private bool isWallRunning;
+    private bool isWallRight;
+    private bool isWallLeft;
+    private RaycastHit wallHit;
+    private Vector3 wallNormal;
+    
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
@@ -105,6 +123,7 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         HandleGroundCheck();
+        CheckForWall();
         HandleMovement();
         HandleMouseLook();
         HandleHeadBob();
@@ -123,9 +142,81 @@ public class PlayerController : MonoBehaviour
             verticalVelocity = -2f; // Small downward force to keep grounded
             jumpsRemaining = enableDoubleJump ? 2 : 1; // Reset jumps when grounded
         }
+        
+        // Exit wall run when grounded
+        if (isGrounded && isWallRunning)
+        {
+            isWallRunning = false;
+        }
+    }
+    
+    private void CheckForWall()
+    {
+        if (!enableWallRun || isGrounded) return;
+        
+        // Check for walls on both sides
+        isWallRight = Physics.Raycast(transform.position, transform.right, out RaycastHit rightHit, wallCheckDistance, wallLayer);
+        isWallLeft = Physics.Raycast(transform.position, -transform.right, out RaycastHit leftHit, wallCheckDistance, wallLayer);
+        
+        // Determine which wall we hit
+        if (isWallRight)
+        {
+            wallHit = rightHit;
+            wallNormal = rightHit.normal;
+        }
+        else if (isWallLeft)
+        {
+            wallHit = leftHit;
+            wallNormal = leftHit.normal;
+        }
+        
+        // Check if we can start wall running
+        if ((isWallRight || isWallLeft) && !isGrounded)
+        {
+            // Calculate angle between player velocity and wall
+            Vector3 horizontalVelocity = new Vector3(currentVelocity.x, 0f, currentVelocity.z);
+            float angle = Vector3.Angle(horizontalVelocity, -wallNormal);
+            
+            // Only start wall run if angle is shallow enough
+            if (angle < wallRunMinAngle && horizontalVelocity.magnitude > 1f)
+            {
+                if (!isWallRunning)
+                {
+                    StartWallRun();
+                }
+            }
+            else if (isWallRunning)
+            {
+                // Stop wall run if angle becomes too steep
+                isWallRunning = false;
+            }
+        }
+        else
+        {
+            isWallRunning = false;
+        }
+    }
+    
+    private void StartWallRun()
+    {
+        isWallRunning = true;
+        // Reset double jump when starting wall run
+        jumpsRemaining = enableDoubleJump ? 2 : 1;
     }
     
     private void HandleMovement()
+    {
+        if (isWallRunning)
+        {
+            HandleWallRunMovement();
+        }
+        else
+        {
+            HandleNormalMovement();
+        }
+    }
+    
+    private void HandleNormalMovement()
     {
         // Calculate target velocity based on input
         Vector3 moveDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
@@ -152,6 +243,44 @@ public class PlayerController : MonoBehaviour
         characterController.Move(finalMovement * Time.deltaTime);
     }
     
+    private void HandleWallRunMovement()
+    {
+        // Calculate wall forward direction (perpendicular to wall normal)
+        Vector3 wallForward = Vector3.Cross(wallNormal, Vector3.up);
+        
+        // Make sure we're running in the correct direction relative to player's forward
+        if (Vector3.Dot(wallForward, transform.forward) < 0)
+        {
+            wallForward = -wallForward;
+        }
+        
+        // Project current velocity onto wall direction to maintain momentum
+        Vector3 wallVelocity = Vector3.Project(currentVelocity, wallForward);
+        
+        // Apply input to modify wall run direction
+        if (moveInput.magnitude > 0.1f)
+        {
+            Vector3 inputDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
+            Vector3 wallInputDirection = Vector3.Project(inputDirection, wallForward);
+            wallVelocity += wallInputDirection * acceleration * Time.deltaTime;
+        }
+        
+        // Keep player attached to wall by pushing them slightly into it
+        Vector3 wallStick = -wallNormal * 2f;
+        
+        currentVelocity = wallVelocity + wallStick;
+        
+        // Apply reduced gravity (or slide gravity if not moving)
+        float gravityToApply = moveInput.magnitude > 0.1f ? wallRunGravity : wallRunSlideGravity;
+        verticalVelocity += gravityToApply * Time.deltaTime;
+        
+        // Combine horizontal and vertical movement
+        Vector3 finalMovement = currentVelocity + Vector3.up * verticalVelocity;
+        
+        // Move the character
+        characterController.Move(finalMovement * Time.deltaTime);
+    }
+    
     private void HandleMouseLook()
     {
         if (cameraTransform == null) return;
@@ -165,9 +294,22 @@ public class PlayerController : MonoBehaviour
         currentYaw = Mathf.Lerp(currentYaw, targetYaw, lookSmoothing * Time.deltaTime);
         cameraPitch = Mathf.Lerp(cameraPitch, targetCameraPitch, lookSmoothing * Time.deltaTime);
         
+        // Calculate camera tilt for wall running
+        float targetTilt = 0f;
+        if (isWallRunning)
+        {
+            targetTilt = isWallRight ? -wallRunCameraTilt : wallRunCameraTilt;
+        }
+        
         // Apply rotations
         transform.rotation = Quaternion.Euler(0f, currentYaw, 0f);
-        cameraTransform.localRotation = Quaternion.Euler(cameraPitch, 0f, 0f);
+        
+        // Smoothly interpolate camera tilt
+        Vector3 currentEuler = cameraTransform.localRotation.eulerAngles;
+        float currentTilt = currentEuler.z > 180 ? currentEuler.z - 360 : currentEuler.z;
+        float newTilt = Mathf.Lerp(currentTilt, targetTilt, Time.deltaTime * 10f);
+        
+        cameraTransform.localRotation = Quaternion.Euler(cameraPitch, 0f, newTilt);
     }
     
     private void HandleHeadBob()
@@ -331,16 +473,32 @@ public class PlayerController : MonoBehaviour
     {
         if (context.performed && jumpsRemaining > 0)
         {
-            // Use different jump height for double jump
-            float jumpHeightToUse = (jumpsRemaining == 2) ? jumpHeight : doubleJumpHeight;
-            
-            // Calculate jump velocity using physics formula: v = sqrt(2 * h * g)
-            verticalVelocity = Mathf.Sqrt(jumpHeightToUse * 2f * -gravity);
-            
-            // On double jump, reset horizontal velocity for full air control
-            if (jumpsRemaining == 1)
+            // Wall jump
+            if (isWallRunning)
             {
-                currentVelocity = Vector3.zero;
+                // Jump up and away from wall
+                verticalVelocity = wallJumpUpForce;
+                currentVelocity = wallNormal * wallJumpOutForce;
+                
+                // Exit wall run
+                isWallRunning = false;
+                jumpsRemaining--;
+            }
+            else
+            {
+                // Normal jump or double jump
+                float jumpHeightToUse = (jumpsRemaining == 2) ? jumpHeight : doubleJumpHeight;
+                
+                // Calculate jump velocity using physics formula: v = sqrt(2 * h * g)
+                verticalVelocity = Mathf.Sqrt(jumpHeightToUse * 2f * -gravity);
+                
+                // On double jump, reset horizontal velocity for full air control
+                if (jumpsRemaining == 1)
+                {
+                    currentVelocity = Vector3.zero;
+                }
+                
+                jumpsRemaining--;
             }
             
             // Trigger gun jump bob
@@ -348,8 +506,6 @@ public class PlayerController : MonoBehaviour
             {
                 StartCoroutine(GunJumpBob());
             }
-            
-            jumpsRemaining--;
         }
     }
     

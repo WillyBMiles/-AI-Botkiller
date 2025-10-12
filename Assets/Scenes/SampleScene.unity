@@ -363,7 +363,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 55
+    m_Bits: 119
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -788,6 +788,17 @@ MonoBehaviour:
   gravity: -20
   enableDoubleJump: 1
   doubleJumpHeight: 2
+  enableWallRun: 1
+  wallRunMinAngle: 90
+  wallRunGravity: -5
+  wallRunSlideGravity: -15
+  wallJumpUpForce: 10
+  wallJumpOutForce: 10
+  wallCheckDistance: 0.7
+  wallLayer:
+    serializedVersion: 2
+    m_Bits: 64
+  wallRunCameraTilt: -15
   mouseSensitivity: 0.1
   maxLookAngle: 90
   lookSmoothing: 20
@@ -961,7 +972,7 @@ GameObject:
   - component: {fileID: 787286673}
   - component: {fileID: 787286672}
   - component: {fileID: 787286671}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1365,7 +1376,7 @@ GameObject:
   - component: {fileID: 1089869489}
   - component: {fileID: 1089869488}
   - component: {fileID: 1089869487}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
