@@ -8,16 +8,37 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float acceleration = 10f;
     [SerializeField] private float deceleration = 10f;
+    [SerializeField] private float airControl = 0.3f;
     
     [Header("Jump Settings")]
     [SerializeField] private float jumpHeight = 2f;
     [SerializeField] private float gravity = -20f;
+    [SerializeField] private bool enableDoubleJump = true;
+    [SerializeField] private float doubleJumpHeight = 2f;
     
     [Header("Mouse Look Settings")]
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float maxLookAngle = 90f;
+    [SerializeField] private float lookSmoothing = 10f;
     [SerializeField] private Transform cameraTransform;
     
+    [Header("Head Bob Settings")]
+    [SerializeField] private bool enableHeadBob = true;
+    [SerializeField] private float bobFrequency = 10f;
+    [SerializeField] private float bobHorizontalAmplitude = 0.05f;
+    [SerializeField] private float bobVerticalAmplitude = 0.08f;
+    [SerializeField] private float landingBobAmount = 0.15f;
+    
+    [Header("Gun Bob Settings")]
+    [SerializeField] private Transform gunTransform;
+    [SerializeField] private bool enableGunBob = true;
+    [SerializeField] private float gunBobFrequency = 1f;
+    [SerializeField] private float gunBobPositionAmount = 0.02f;
+    [SerializeField] private float gunBobRotationAmount = 2f;
+    [SerializeField] private float gunLandingBobAmount = 0.3f;
+    [SerializeField] private float gunJumpBobAmount = 0.2f;
+    [SerializeField] private float gunJumpBobAmountRotation = 0.2f;
+
     // Components
     private CharacterController characterController;
     
@@ -27,9 +48,24 @@ public class PlayerController : MonoBehaviour
     private Vector3 targetVelocity;
     private float verticalVelocity;
     
+    // Jump variables
+    private int jumpsRemaining;
+    
     // Look variables
     private Vector2 lookInput;
     private float cameraPitch = 0f;
+    private float targetCameraPitch = 0f;
+    private float targetYaw = 0f;
+    private float currentYaw = 0f;
+    
+    // Head bob variables
+    private float bobTimer = 0f;
+    private Vector3 cameraStartPosition;
+    private bool wasGrounded = true;
+    
+    // Gun bob variables
+    private Vector3 gunStartPosition;
+    private Quaternion gunStartRotation;
     
     // Ground check
     private bool isGrounded;
@@ -51,6 +87,19 @@ public class PlayerController : MonoBehaviour
                 Debug.LogError("PlayerController: No camera found! Please assign a camera transform.");
             }
         }
+        
+        // Store initial camera position for head bob
+        if (cameraTransform != null)
+        {
+            cameraStartPosition = cameraTransform.localPosition;
+        }
+        
+        // Store initial gun position and rotation for gun bob
+        if (gunTransform != null)
+        {
+            gunStartPosition = gunTransform.localPosition;
+            gunStartRotation = gunTransform.localRotation;
+        }
     }
     
     private void Update()
@@ -58,6 +107,8 @@ public class PlayerController : MonoBehaviour
         HandleGroundCheck();
         HandleMovement();
         HandleMouseLook();
+        HandleHeadBob();
+        HandleGunBob();
     }
     
     private void HandleGroundCheck()
@@ -70,6 +121,7 @@ public class PlayerController : MonoBehaviour
         if (isGrounded && verticalVelocity <= 0)
         {
             verticalVelocity = -2f; // Small downward force to keep grounded
+            jumpsRemaining = enableDoubleJump ? 2 : 1; // Reset jumps when grounded
         }
     }
     
@@ -81,6 +133,13 @@ public class PlayerController : MonoBehaviour
         
         // Smoothly interpolate to target velocity
         float lerpSpeed = moveInput.magnitude > 0 ? acceleration : deceleration;
+        
+        // Reduce control when in the air
+        if (!isGrounded)
+        {
+            lerpSpeed *= airControl;
+        }
+        
         currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, lerpSpeed * Time.deltaTime);
         
         // Apply gravity
@@ -97,13 +156,163 @@ public class PlayerController : MonoBehaviour
     {
         if (cameraTransform == null) return;
         
-        // Horizontal rotation (rotate player body)
-        transform.Rotate(Vector3.up * lookInput.x * mouseSensitivity);
+        // Calculate target rotations
+        targetYaw += lookInput.x * mouseSensitivity;
+        targetCameraPitch -= lookInput.y * mouseSensitivity;
+        targetCameraPitch = Mathf.Clamp(targetCameraPitch, -maxLookAngle, maxLookAngle);
         
-        // Vertical rotation (rotate camera)
-        cameraPitch -= lookInput.y * mouseSensitivity;
-        cameraPitch = Mathf.Clamp(cameraPitch, -maxLookAngle, maxLookAngle);
+        // Smoothly interpolate to target rotations
+        currentYaw = Mathf.Lerp(currentYaw, targetYaw, lookSmoothing * Time.deltaTime);
+        cameraPitch = Mathf.Lerp(cameraPitch, targetCameraPitch, lookSmoothing * Time.deltaTime);
+        
+        // Apply rotations
+        transform.rotation = Quaternion.Euler(0f, currentYaw, 0f);
         cameraTransform.localRotation = Quaternion.Euler(cameraPitch, 0f, 0f);
+    }
+    
+    private void HandleHeadBob()
+    {
+        if (!enableHeadBob || cameraTransform == null) return;
+        
+        // Check for landing
+        if (!wasGrounded && isGrounded)
+        {
+            // Apply landing bob
+            StartCoroutine(LandingBob());
+        }
+        wasGrounded = isGrounded;
+        
+        // Only bob when moving on the ground
+        if (isGrounded && currentVelocity.magnitude > 0.1f)
+        {
+            bobTimer += Time.deltaTime * bobFrequency;
+            
+            // Calculate bob offset
+            float horizontalBob = Mathf.Sin(bobTimer) * bobHorizontalAmplitude;
+            float verticalBob = Mathf.Sin(bobTimer * 2f) * bobVerticalAmplitude;
+            
+            Vector3 bobOffset = new Vector3(horizontalBob, verticalBob, 0f);
+            cameraTransform.localPosition = cameraStartPosition + bobOffset;
+        }
+        else
+        {
+            // Smoothly return to original position when not moving
+            bobTimer = 0f;
+            cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, cameraStartPosition, Time.deltaTime * 5f);
+        }
+    }
+    
+    private System.Collections.IEnumerator LandingBob()
+    {
+        float elapsed = 0f;
+        float duration = 0.2f;
+        Vector3 startPos = cameraTransform.localPosition;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            
+            // Quick dip down and back up
+            float bobAmount = Mathf.Sin(t * Mathf.PI) * landingBobAmount;
+            cameraTransform.localPosition = startPos + Vector3.down * bobAmount;
+            
+            yield return null;
+        }
+        
+        cameraTransform.localPosition = cameraStartPosition;
+    }
+    
+    private void HandleGunBob()
+    {
+        if (!enableGunBob || gunTransform == null) return;
+        
+        // Check for landing and apply gun landing bob
+        if (!wasGrounded && isGrounded)
+        {
+            StartCoroutine(GunLandingBob());
+        }
+        
+        // Only bob when moving on the ground
+        if (isGrounded && currentVelocity.magnitude > 0.1f)
+        {
+            // Calculate gun bob offset (slightly different phase than camera for more natural feel)
+            float horizontalBob = Mathf.Sin(bobTimer * 0.5f * gunBobFrequency) * gunBobPositionAmount;
+            float verticalBob = Mathf.Sin(bobTimer * gunBobFrequency) * gunBobPositionAmount;
+            
+            Vector3 bobOffset = new Vector3(horizontalBob, verticalBob, 0f);
+            
+            // Calculate gun bob rotation (sway)
+            float rollBob = Mathf.Sin(bobTimer * 0.5f * gunBobFrequency) * gunBobRotationAmount;
+            float pitchBob = Mathf.Sin(bobTimer * gunBobFrequency) * gunBobRotationAmount * 0.5f;
+            
+            Quaternion bobRotation = Quaternion.Euler(pitchBob, 0f, rollBob);
+            
+            gunTransform.localPosition = gunStartPosition + bobOffset;
+            gunTransform.localRotation = gunStartRotation * bobRotation;
+        }
+        else
+        {
+            // Smoothly return to original position when not moving
+            gunTransform.localPosition = Vector3.Lerp(gunTransform.localPosition, gunStartPosition, Time.deltaTime * 5f);
+            gunTransform.localRotation = Quaternion.Lerp(gunTransform.localRotation, gunStartRotation, Time.deltaTime * 5f);
+        }
+    }
+    
+    private System.Collections.IEnumerator GunLandingBob()
+    {
+        if (gunTransform == null) yield break;
+        
+        float elapsed = 0f;
+        float duration = 0.25f;
+        Vector3 startPos = gunTransform.localPosition;
+        Quaternion startRot = gunTransform.localRotation;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            
+            // Gun kicks up and back down on landing
+            float bobAmount = Mathf.Sin(t * Mathf.PI) * gunLandingBobAmount;
+            float rotAmount = Mathf.Sin(t * Mathf.PI) * 10f; // Rotation kick
+            
+            gunTransform.localPosition = startPos + new Vector3(0f, -bobAmount, bobAmount * 0.5f);
+            gunTransform.localRotation = startRot * Quaternion.Euler(-rotAmount, 0f, 0f);
+            
+            yield return null;
+        }
+        
+        gunTransform.localPosition = gunStartPosition;
+        gunTransform.localRotation = gunStartRotation;
+    }
+    
+    private System.Collections.IEnumerator GunJumpBob()
+    {
+        if (gunTransform == null) yield break;
+        
+        float elapsed = 0f;
+        float duration = 0.2f;
+        Vector3 startPos = gunTransform.localPosition;
+        Quaternion startRot = gunTransform.localRotation;
+        
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            
+            // Gun kicks down and back up on jump
+            float bobAmount = Mathf.Sin(t * Mathf.PI) * gunJumpBobAmount;
+            float rotAmount = Mathf.Sin(t * Mathf.PI) * gunJumpBobAmountRotation; // Rotation kick
+            
+            gunTransform.localPosition = startPos + new Vector3(0f, bobAmount, -bobAmount * 0.3f);
+            gunTransform.localRotation = startRot * Quaternion.Euler(rotAmount, 0f, 0f);
+            
+            yield return null;
+        }
+        
+        gunTransform.localPosition = gunStartPosition;
+        gunTransform.localRotation = gunStartRotation;
     }
     
     #region Input Callbacks
@@ -120,10 +329,27 @@ public class PlayerController : MonoBehaviour
     
     public void OnJump(InputAction.CallbackContext context)
     {
-        if (context.performed && isGrounded)
+        if (context.performed && jumpsRemaining > 0)
         {
+            // Use different jump height for double jump
+            float jumpHeightToUse = (jumpsRemaining == 2) ? jumpHeight : doubleJumpHeight;
+            
             // Calculate jump velocity using physics formula: v = sqrt(2 * h * g)
-            verticalVelocity = Mathf.Sqrt(jumpHeight * 2f * -gravity);
+            verticalVelocity = Mathf.Sqrt(jumpHeightToUse * 2f * -gravity);
+            
+            // On double jump, reset horizontal velocity for full air control
+            if (jumpsRemaining == 1)
+            {
+                currentVelocity = Vector3.zero;
+            }
+            
+            // Trigger gun jump bob
+            if (enableGunBob && gunTransform != null)
+            {
+                StartCoroutine(GunJumpBob());
+            }
+            
+            jumpsRemaining--;
         }
     }
     
