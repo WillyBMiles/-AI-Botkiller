@@ -1,0 +1,178 @@
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public class Player : MonoBehaviour
+{
+    [Header("Player Stats")]
+    [SerializeField] private float maxHealth = 100f;
+    [SerializeField] private float currentHealth;
+    [SerializeField] private int maxAmmo = 100;
+    [SerializeField] private int currentAmmo;
+    
+    [Header("UI References")]
+    [SerializeField] private CanvasGroup loseScreenCanvasGroup;
+    [SerializeField] private Image healthBarFillImage;
+    
+    [Header("Components")]
+    [SerializeField] private PlayerController playerController;
+    
+    private bool isDead = false;
+    
+    private void Awake()
+    {
+        // Initialize stats
+        currentHealth = maxHealth;
+        currentAmmo = maxAmmo;
+        
+        // Auto-find components if not assigned
+        if (playerController == null)
+        {
+            playerController = GetComponent<PlayerController>();
+        }
+        
+        // Hide lose screen at start
+        if (loseScreenCanvasGroup != null)
+        {
+            loseScreenCanvasGroup.alpha = 0f;
+            loseScreenCanvasGroup.interactable = false;
+            loseScreenCanvasGroup.blocksRaycasts = false;
+        }
+        
+        // Initialize health bar
+        UpdateHealthBar();
+    }
+    
+    
+    /// <summary>
+    /// Reduces player health by the specified amount
+    /// </summary>
+    public void TakeDamage(float damage)
+    {
+        if (isDead) return;
+        
+        currentHealth -= damage;
+        currentHealth = Mathf.Max(currentHealth, 0f);
+        
+        Debug.Log($"Player took {damage} damage. Health: {currentHealth}/{maxHealth}");
+        
+        // Update health bar
+        UpdateHealthBar();
+        
+        // Check if player died
+        if (currentHealth <= 0f)
+        {
+            Die();
+        }
+    }
+    
+    /// <summary>
+    /// Heals the player by the specified amount (from health packs)
+    /// </summary>
+    public void Heal(float amount)
+    {
+        if (isDead) return;
+        
+        currentHealth += amount;
+        currentHealth = Mathf.Min(currentHealth, maxHealth);
+        
+        Debug.Log($"Player healed {amount}. Health: {currentHealth}/{maxHealth}");
+        
+        // Update health bar
+        UpdateHealthBar();
+    }
+    
+    /// <summary>
+    /// Adds ammo to the player (from ammo packs)
+    /// </summary>
+    public void AddAmmo(int amount)
+    {
+        if (isDead) return;
+        
+        currentAmmo += amount;
+        currentAmmo = Mathf.Min(currentAmmo, maxAmmo);
+        
+        Debug.Log($"Player gained {amount} ammo. Ammo: {currentAmmo}/{maxAmmo}");
+    }
+    
+    /// <summary>
+    /// Consumes ammo when shooting. Returns true if ammo was available.
+    /// </summary>
+    public bool UseAmmo(int amount = 1)
+    {
+        if (isDead) return false;
+        
+        if (currentAmmo >= amount)
+        {
+            currentAmmo -= amount;
+            return true;
+        }
+        
+        Debug.Log("Out of ammo!");
+        return false;
+    }
+    
+    private void Die()
+    {
+        if (isDead) return;
+        
+        isDead = true;
+        
+        Debug.Log("Player died!");
+        
+        // Disable player controller
+        if (playerController != null)
+        {
+            playerController.enabled = false;
+        }
+        
+        // Show lose screen
+        ShowLoseScreen();
+        
+        // Unlock and show cursor
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+    }
+    
+    private void ShowLoseScreen()
+    {
+        if (loseScreenCanvasGroup != null)
+        {
+            loseScreenCanvasGroup.alpha = 1f;
+            loseScreenCanvasGroup.interactable = true;
+            loseScreenCanvasGroup.blocksRaycasts = true;
+        }
+    }
+    
+    public void OnRestart(InputAction.CallbackContext context)
+    {
+        if (context.performed && isDead)
+        {
+            RestartGame();
+        }
+    }
+    
+    private void RestartGame()
+    {
+        // Reload the current scene
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+    
+    private void UpdateHealthBar()
+    {
+        if (healthBarFillImage != null)
+        {
+            healthBarFillImage.fillAmount = GetHealthPercentage();
+        }
+    }
+    
+    // Public getters for UI or other systems
+    public float GetCurrentHealth() => currentHealth;
+    public float GetMaxHealth() => maxHealth;
+    public int GetCurrentAmmo() => currentAmmo;
+    public int GetMaxAmmo() => maxAmmo;
+    public bool IsDead() => isDead;
+    public float GetHealthPercentage() => currentHealth / maxHealth;
+    public float GetAmmoPercentage() => (float)currentAmmo / maxAmmo;
+}

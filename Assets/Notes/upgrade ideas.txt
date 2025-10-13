@@ -1,0 +1,19 @@
+Ideas for abilities:
+Floor is lava: 1% extra damage for every second you spend not on the ground, up to 100%
+
+Runner: 20% extra fire rate while wall running
+
+Redirect: 25% extra damage for 2 seconds after double jumping
+
+Slide master: 10% extra damage while sliding
+
+Another one: An extra mid air jump
+
+Death From Above: 50% extra damage when directly above an enemy (within 5 degrees?)
+
+Speedy: up to 20% extra damage based on how fast you're moving
+
+Activated abilities:
+Grappling hook
+Dash
+

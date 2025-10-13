@@ -15,6 +15,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float gravity = -20f;
     [SerializeField] private bool enableDoubleJump = true;
     [SerializeField] private float doubleJumpHeight = 2f;
+    [SerializeField] private float doubleJumpDirectionalBoost = 5f;
     
     [Header("Wall Run Settings")]
     [SerializeField] private bool enableWallRun = true;
@@ -28,6 +29,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask wallLayer;
     [SerializeField] private float wallRunCameraTilt = 15f;
     [SerializeField] private float wallRunMaxSpeed = 10f;
+    [SerializeField] private float wallRunInitialUpwardBoost = 3f;
     
     [Header("Slide Settings")]
     [SerializeField] private bool enableSlide = true;
@@ -315,6 +317,12 @@ public class PlayerController : MonoBehaviour
         isWallRunning = true;
         // Reset double jump when starting wall run
         jumpsRemaining = enableDoubleJump ? 2 : 1;
+        
+        // Give upward boost if not already moving upward
+        if (verticalVelocity <= wallRunInitialUpwardBoost)
+        {
+            verticalVelocity = wallRunInitialUpwardBoost;
+        }
     }
     
     private void HandleMovement()
@@ -522,8 +530,8 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(GunLandingBob());
         }
         
-        // Only bob when moving on the ground
-        if (isGrounded && currentVelocity.magnitude > 0.1f)
+        // Bob when moving on the ground OR wall running
+        if ((isGrounded && currentVelocity.magnitude > 0.1f) || (isWallRunning && moveInput.magnitude > 0.1f))
         {
             // Calculate gun bob offset (slightly different phase than camera for more natural feel)
             float horizontalBob = Mathf.Sin(bobTimer * 0.5f * gunBobFrequency) * gunBobPositionAmount;
@@ -663,10 +671,19 @@ public class PlayerController : MonoBehaviour
                 // Calculate jump velocity using physics formula: v = sqrt(2 * h * g)
                 verticalVelocity = Mathf.Sqrt(jumpHeightToUse * 2f * -gravity);
                 
-                // On double jump, reset horizontal velocity for full air control
+                // On double jump, add directional boost based on input
                 if (jumpsRemaining == 1)
                 {
-                    currentVelocity = Vector3.zero;
+                    // Apply directional boost if there's movement input
+                    if (moveInput.magnitude > 0.1f)
+                    {
+                        Vector3 boostDirection = (transform.right * moveInput.x + transform.forward * moveInput.y).normalized;
+                        currentVelocity = boostDirection * doubleJumpDirectionalBoost;
+                    }
+                    else
+                    {
+                        currentVelocity = Vector3.zero;
+                    }
                 }
                 
                 jumpsRemaining--;
