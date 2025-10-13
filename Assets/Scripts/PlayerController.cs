@@ -23,15 +23,28 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float wallRunSlideGravity = -15f;
     [SerializeField] private float wallJumpUpForce = 12f;
     [SerializeField] private float wallJumpOutForce = 10f;
+    [SerializeField] private float wallJumpForwardForce = 8f;
     [SerializeField] private float wallCheckDistance = 0.7f;
     [SerializeField] private LayerMask wallLayer;
     [SerializeField] private float wallRunCameraTilt = 15f;
+    [SerializeField] private float wallRunMaxSpeed = 10f;
+    
+    [Header("Slide Settings")]
+    [SerializeField] private bool enableSlide = true;
+    [SerializeField] private float slideMinSpeed = 4f;
+    [SerializeField] private float slideDeceleration = 5f;
+    [SerializeField] private float slideHeightReduction = 0.5f;
+    [SerializeField] private float slideCameraLower = 0.5f;
+    [SerializeField] private float slideCameraTransitionSpeed = 10f;
+    [SerializeField] private float slideJumpBoostTime = 0.5f;
+    [SerializeField] private float slideJumpBoostMultiplier = 1.5f;
     
     [Header("Mouse Look Settings")]
     [SerializeField] private float mouseSensitivity = 2f;
     [SerializeField] private float maxLookAngle = 90f;
     [SerializeField] private float lookSmoothing = 10f;
     [SerializeField] private Transform cameraTransform;
+    [SerializeField] private Transform cameraParentTransform;
     
     [Header("Head Bob Settings")]
     [SerializeField] private bool enableHeadBob = true;
@@ -52,6 +65,7 @@ public class PlayerController : MonoBehaviour
 
     // Components
     private CharacterController characterController;
+    private CapsuleCollider capsuleCollider;
     
     // Movement variables
     private Vector2 moveInput;
@@ -72,6 +86,7 @@ public class PlayerController : MonoBehaviour
     // Head bob variables
     private float bobTimer = 0f;
     private Vector3 cameraStartPosition;
+    private Vector3 cameraParentStartPosition;
     private bool wasGrounded = true;
     
     // Gun bob variables
@@ -88,9 +103,25 @@ public class PlayerController : MonoBehaviour
     private RaycastHit wallHit;
     private Vector3 wallNormal;
     
+    // Slide variables
+    private bool isSliding;
+    private bool slideInput;
+    private Vector3 slideDirection;
+    private float slideSpeed;
+    private float slideTimer;
+    private float originalHeight;
+    private float originalRadius;
+    private Vector3 originalCenter;
+    
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
+        capsuleCollider = GetComponent<CapsuleCollider>();
+        
+        // Store original character controller dimensions
+        originalHeight = characterController.height;
+        originalRadius = characterController.radius;
+        originalCenter = characterController.center;
         
         // Lock and hide cursor
         Cursor.lockState = CursorLockMode.Locked;
@@ -112,6 +143,12 @@ public class PlayerController : MonoBehaviour
             cameraStartPosition = cameraTransform.localPosition;
         }
         
+        // Store initial camera parent position for slide
+        if (cameraParentTransform != null)
+        {
+            cameraParentStartPosition = cameraParentTransform.localPosition;
+        }
+        
         // Store initial gun position and rotation for gun bob
         if (gunTransform != null)
         {
@@ -124,6 +161,7 @@ public class PlayerController : MonoBehaviour
     {
         HandleGroundCheck();
         CheckForWall();
+        HandleSlide();
         HandleMovement();
         HandleMouseLook();
         HandleHeadBob();
@@ -135,7 +173,6 @@ public class PlayerController : MonoBehaviour
         // CharacterController's built-in ground check
         isGrounded = characterController.isGrounded;
 
-        Debug.Log(isGrounded);
         // Reset vertical velocity when grounded
         if (isGrounded && verticalVelocity <= 0)
         {
@@ -147,6 +184,82 @@ public class PlayerController : MonoBehaviour
         if (isGrounded && isWallRunning)
         {
             isWallRunning = false;
+        }
+    }
+    
+    private void HandleSlide()
+    {
+        if (!enableSlide) return;
+
+        // Check if we should start sliding
+        if (slideInput && isGrounded && !isSliding && currentVelocity.magnitude >= slideMinSpeed)
+        {
+            StartSlide();
+        }
+        
+        // Check if we should stop sliding
+        if (isSliding && (!slideInput || !isGrounded))
+        {
+            StopSlide();
+        }
+        
+        // Update slide if active
+        if (isSliding)
+        {
+            // Decelerate slide speed
+            slideSpeed = Mathf.Max(slideSpeed - slideDeceleration * Time.deltaTime, 0f);
+            
+            // Track slide duration
+            slideTimer += Time.deltaTime;
+        }
+        
+        // Smoothly interpolate camera parent position
+        if (cameraParentTransform != null)
+        {
+            Vector3 targetPos = isSliding ? cameraParentStartPosition + Vector3.down * slideCameraLower : cameraParentStartPosition;
+            cameraParentTransform.localPosition = Vector3.Lerp(cameraParentTransform.localPosition, targetPos, Time.deltaTime * slideCameraTransitionSpeed);
+        }
+    }
+    
+    private void StartSlide()
+    {
+        isSliding = true;
+        slideDirection = currentVelocity.normalized;
+        slideSpeed = currentVelocity.magnitude;
+        slideTimer = 0f;
+        
+        // Reduce character controller in all dimensions
+        characterController.height = originalHeight * slideHeightReduction;
+        characterController.radius = originalRadius * slideHeightReduction;
+        characterController.center = new Vector3(originalCenter.x, originalCenter.y * slideHeightReduction, originalCenter.z);
+        
+        // Reduce capsule collider if present
+        if (capsuleCollider != null)
+        {
+            capsuleCollider.height = originalHeight * slideHeightReduction;
+            capsuleCollider.radius = originalRadius * slideHeightReduction;
+            capsuleCollider.center = new Vector3(originalCenter.x, originalCenter.y * slideHeightReduction, originalCenter.z);
+        }
+    }
+    
+    private void StopSlide()
+    {
+        if (!isSliding) return;
+        
+        isSliding = false;
+        slideTimer = 0f;
+        
+        // Restore character controller dimensions
+        characterController.height = originalHeight;
+        characterController.radius = originalRadius;
+        characterController.center = originalCenter;
+        
+        // Restore capsule collider if present
+        if (capsuleCollider != null)
+        {
+            capsuleCollider.height = originalHeight;
+            capsuleCollider.radius = originalRadius;
+            capsuleCollider.center = originalCenter;
         }
     }
     
@@ -206,7 +319,11 @@ public class PlayerController : MonoBehaviour
     
     private void HandleMovement()
     {
-        if (isWallRunning)
+        if (isSliding)
+        {
+            HandleSlideMovement();
+        }
+        else if (isWallRunning)
         {
             HandleWallRunMovement();
         }
@@ -214,6 +331,21 @@ public class PlayerController : MonoBehaviour
         {
             HandleNormalMovement();
         }
+    }
+    
+    private void HandleSlideMovement()
+    {
+        // Maintain slide direction and speed
+        currentVelocity = slideDirection * slideSpeed;
+        
+        // Apply gravity
+        verticalVelocity += gravity * Time.deltaTime;
+        
+        // Combine horizontal and vertical movement
+        Vector3 finalMovement = currentVelocity + Vector3.up * verticalVelocity;
+        
+        // Move the character
+        characterController.Move(finalMovement * Time.deltaTime);
     }
     
     private void HandleNormalMovement()
@@ -263,6 +395,12 @@ public class PlayerController : MonoBehaviour
             Vector3 inputDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
             Vector3 wallInputDirection = Vector3.Project(inputDirection, wallForward);
             wallVelocity += wallInputDirection * acceleration * Time.deltaTime;
+        }
+        
+        // Clamp horizontal speed to max wall run speed
+        if (wallVelocity.magnitude > wallRunMaxSpeed)
+        {
+            wallVelocity = wallVelocity.normalized * wallRunMaxSpeed;
         }
         
         // Keep player attached to wall by pushing them slightly into it
@@ -316,6 +454,15 @@ public class PlayerController : MonoBehaviour
     {
         if (!enableHeadBob || cameraTransform == null) return;
         
+        // Don't bob while sliding - smoothly return to center
+        if (isSliding)
+        {
+            bobTimer = 0f;
+            cameraTransform.localPosition = Vector3.Lerp(cameraTransform.localPosition, cameraStartPosition, Time.deltaTime * slideCameraTransitionSpeed);
+            wasGrounded = isGrounded;
+            return;
+        }
+        
         // Check for landing
         if (!wasGrounded && isGrounded)
         {
@@ -324,8 +471,8 @@ public class PlayerController : MonoBehaviour
         }
         wasGrounded = isGrounded;
         
-        // Only bob when moving on the ground
-        if (isGrounded && currentVelocity.magnitude > 0.1f)
+        // Bob when moving on the ground OR wall running
+        if ((isGrounded && currentVelocity.magnitude > 0.1f) || (isWallRunning && moveInput.magnitude > 0.1f))
         {
             bobTimer += Time.deltaTime * bobFrequency;
             
@@ -473,12 +620,30 @@ public class PlayerController : MonoBehaviour
     {
         if (context.performed && jumpsRemaining > 0)
         {
+            // Check for slide jump boost
+            bool slideJumpBoost = isSliding && slideTimer >= slideJumpBoostTime;
+            
+            // Exit slide if jumping
+            if (isSliding)
+            {
+                StopSlide();
+            }
+            
             // Wall jump
             if (isWallRunning)
             {
                 // Jump up and away from wall
                 verticalVelocity = wallJumpUpForce;
-                currentVelocity = wallNormal * wallJumpOutForce;
+                
+                // Calculate wall forward direction for momentum
+                Vector3 wallForward = Vector3.Cross(wallNormal, Vector3.up);
+                if (Vector3.Dot(wallForward, transform.forward) < 0)
+                {
+                    wallForward = -wallForward;
+                }
+                
+                // Combine outward force from wall and forward momentum
+                currentVelocity = wallNormal * wallJumpOutForce + wallForward * wallJumpForwardForce;
                 
                 // Exit wall run
                 isWallRunning = false;
@@ -488,6 +653,12 @@ public class PlayerController : MonoBehaviour
             {
                 // Normal jump or double jump
                 float jumpHeightToUse = (jumpsRemaining == 2) ? jumpHeight : doubleJumpHeight;
+                
+                // Apply slide jump boost if applicable
+                if (slideJumpBoost)
+                {
+                    jumpHeightToUse *= slideJumpBoostMultiplier;
+                }
                 
                 // Calculate jump velocity using physics formula: v = sqrt(2 * h * g)
                 verticalVelocity = Mathf.Sqrt(jumpHeightToUse * 2f * -gravity);
@@ -506,6 +677,18 @@ public class PlayerController : MonoBehaviour
             {
                 StartCoroutine(GunJumpBob());
             }
+        }
+    }
+    
+    public void OnSlide(InputAction.CallbackContext context)
+    {
+        if (context.performed)
+        {
+            slideInput = true;
+        }
+        else if (context.canceled)
+        {
+            slideInput = false;
         }
     }
     
