@@ -40,6 +40,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float slideCameraTransitionSpeed = 10f;
     [SerializeField] private float slideJumpBoostTime = 0.5f;
     [SerializeField] private float slideJumpBoostMultiplier = 1.5f;
+    [SerializeField] private LayerMask slideHeadCheckLayerMask;
     
     [Header("Mouse Look Settings")]
     [SerializeField] private float mouseSensitivity = 2f;
@@ -202,7 +203,11 @@ public class PlayerController : MonoBehaviour
         // Check if we should stop sliding
         if (isSliding && (!slideInput || !isGrounded))
         {
-            StopSlide();
+            // Only stop if there's enough space to stand up
+            if (CanStandUp())
+            {
+                StopSlide();
+            }
         }
         
         // Update slide if active
@@ -263,6 +268,17 @@ public class PlayerController : MonoBehaviour
             capsuleCollider.radius = originalRadius;
             capsuleCollider.center = originalCenter;
         }
+    }
+    
+    private bool CanStandUp()
+    {
+        // Calculate the position where the top of the character would be when standing
+        Vector3 checkPosition = transform.position + Vector3.up * originalHeight / 2f;
+        
+        // Check if there's an obstacle above using a sphere cast
+        bool hasObstacle = Physics.CheckSphere(checkPosition, originalRadius * 0.5f, slideHeadCheckLayerMask);
+        
+        return !hasObstacle;
     }
     
     private void CheckForWall()
