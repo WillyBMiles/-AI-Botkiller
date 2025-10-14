@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class Player : MonoBehaviour
 {
@@ -14,6 +15,7 @@ public class Player : MonoBehaviour
     [Header("UI References")]
     [SerializeField] private CanvasGroup loseScreenCanvasGroup;
     [SerializeField] private Image healthBarFillImage;
+    [SerializeField] private TextMeshProUGUI ammoCountText;
     
     [Header("Components")]
     [SerializeField] private PlayerController playerController;
@@ -42,6 +44,9 @@ public class Player : MonoBehaviour
         
         // Initialize health bar
         UpdateHealthBar();
+        
+        // Initialize ammo display
+        UpdateAmmoDisplay();
     }
     
     
@@ -54,8 +59,6 @@ public class Player : MonoBehaviour
         
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0f);
-        
-        Debug.Log($"Player took {damage} damage. Health: {currentHealth}/{maxHealth}");
         
         // Update health bar
         UpdateHealthBar();
@@ -77,8 +80,6 @@ public class Player : MonoBehaviour
         currentHealth += amount;
         currentHealth = Mathf.Min(currentHealth, maxHealth);
         
-        Debug.Log($"Player healed {amount}. Health: {currentHealth}/{maxHealth}");
-        
         // Update health bar
         UpdateHealthBar();
     }
@@ -93,7 +94,8 @@ public class Player : MonoBehaviour
         currentAmmo += amount;
         currentAmmo = Mathf.Min(currentAmmo, maxAmmo);
         
-        Debug.Log($"Player gained {amount} ammo. Ammo: {currentAmmo}/{maxAmmo}");
+        // Update ammo display
+        UpdateAmmoDisplay();
     }
     
     /// <summary>
@@ -106,6 +108,10 @@ public class Player : MonoBehaviour
         if (currentAmmo >= amount)
         {
             currentAmmo -= amount;
+            
+            // Update ammo display
+            UpdateAmmoDisplay();
+            
             return true;
         }
         
@@ -164,6 +170,14 @@ public class Player : MonoBehaviour
         if (healthBarFillImage != null)
         {
             healthBarFillImage.fillAmount = GetHealthPercentage();
+        }
+    }
+    
+    private void UpdateAmmoDisplay()
+    {
+        if (ammoCountText != null)
+        {
+            ammoCountText.text = $"{currentAmmo}";
         }
     }
     

@@ -135,7 +135,6 @@ public class Shooting : MonoBehaviour
             if (enemy != null)
             {
                 enemy.TakeDamage(damage);
-                Debug.Log($"Hit enemy: {enemy.gameObject.name} for {damage} damage");
             }
             
             // Instantiate bullet hit effect at hit point
