@@ -13,6 +13,8 @@ Death From Above: 50% extra damage when directly above an enemy (within 5 degree
 
 Speedy: up to 20% extra damage based on how fast you're moving
 
+Underneath: 3x damage when attacking from below (e.g. while sliding under them)
+
 Activated abilities:
 Grappling hook
 Dash

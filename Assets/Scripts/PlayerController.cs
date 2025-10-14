@@ -65,6 +65,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float gunLandingBobAmount = 0.3f;
     [SerializeField] private float gunJumpBobAmount = 0.2f;
     [SerializeField] private float gunJumpBobAmountRotation = 0.2f;
+    
+    [Header("Gun Recoil Settings")]
+    [SerializeField] private float recoilPositionAmount = 0.1f;
+    [SerializeField] private float recoilRotationAmount = 5f;
+    [SerializeField] private float recoilRecoverySpeed = 10f;
 
     // Components
     private CharacterController characterController;
@@ -95,6 +100,11 @@ public class PlayerController : MonoBehaviour
     // Gun bob variables
     private Vector3 gunStartPosition;
     private Quaternion gunStartRotation;
+    
+    // Gun recoil variables
+    private Vector3 gunRecoilOffset = Vector3.zero;
+    private Quaternion gunRecoilRotation = Quaternion.identity;
+    private bool isRecoiling = false;
     
     // Ground check
     private bool isGrounded;
@@ -546,6 +556,20 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(GunLandingBob());
         }
         
+        // Handle recoil recovery
+        if (isRecoiling)
+        {
+            gunRecoilOffset = Vector3.Lerp(gunRecoilOffset, Vector3.zero, Time.deltaTime * recoilRecoverySpeed);
+            gunRecoilRotation = Quaternion.Lerp(gunRecoilRotation, Quaternion.identity, Time.deltaTime * recoilRecoverySpeed);
+            
+            if (gunRecoilOffset.magnitude < 0.001f)
+            {
+                gunRecoilOffset = Vector3.zero;
+                gunRecoilRotation = Quaternion.identity;
+                isRecoiling = false;
+            }
+        }
+        
         // Bob when moving on the ground OR wall running
         if ((isGrounded && currentVelocity.magnitude > 0.1f) || (isWallRunning && moveInput.magnitude > 0.1f))
         {
@@ -561,14 +585,18 @@ public class PlayerController : MonoBehaviour
             
             Quaternion bobRotation = Quaternion.Euler(pitchBob, 0f, rollBob);
             
-            gunTransform.localPosition = gunStartPosition + bobOffset;
-            gunTransform.localRotation = gunStartRotation * bobRotation;
+            // Apply bob + recoil
+            gunTransform.localPosition = gunStartPosition + bobOffset + gunRecoilOffset;
+            gunTransform.localRotation = gunStartRotation * bobRotation * gunRecoilRotation;
         }
         else
         {
-            // Smoothly return to original position when not moving
-            gunTransform.localPosition = Vector3.Lerp(gunTransform.localPosition, gunStartPosition, Time.deltaTime * 5f);
-            gunTransform.localRotation = Quaternion.Lerp(gunTransform.localRotation, gunStartRotation, Time.deltaTime * 5f);
+            // Smoothly return to original position when not moving (but keep recoil)
+            Vector3 targetPos = gunStartPosition + gunRecoilOffset;
+            Quaternion targetRot = gunStartRotation * gunRecoilRotation;
+            
+            gunTransform.localPosition = Vector3.Lerp(gunTransform.localPosition, targetPos, Time.deltaTime * 5f);
+            gunTransform.localRotation = Quaternion.Lerp(gunTransform.localRotation, targetRot, Time.deltaTime * 5f);
         }
     }
     
@@ -723,6 +751,19 @@ public class PlayerController : MonoBehaviour
         {
             slideInput = false;
         }
+    }
+    
+    public void TriggerGunRecoil()
+    {
+        if (gunTransform == null) return;
+        
+        // Add recoil offset (kick back and up slightly)
+        gunRecoilOffset = new Vector3(0f, -recoilPositionAmount * 0.3f, -recoilPositionAmount);
+        
+        // Add recoil rotation (kick up)
+        gunRecoilRotation = Quaternion.Euler(-recoilRotationAmount, 0f, 0f);
+        
+        isRecoiling = true;
     }
     
     #endregion
