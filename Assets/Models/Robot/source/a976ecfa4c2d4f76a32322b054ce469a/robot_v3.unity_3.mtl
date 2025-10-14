@@ -1,0 +1,39 @@
+
+newmtl A
+Ka  0.6 0.6 0.6
+Kd  0.6 0.6 0.6
+Ks  0.1 0.1 0.1
+d  1.0
+Ns  150.0
+illum 2
+map_Kd A.tga
+map_Bump A_nm.tga
+
+
+
+
+newmtl B
+Ka  0.6 0.6 0.6
+Kd  0.6 0.6 0.6
+Ks  0.1 0.1 0.1
+d  1.0
+Ns  150.0
+illum 2
+map_Kd B.tga
+map_Bump B_nm.tga
+
+
+
+
+newmtl C
+Ka  0.6 0.6 0.6
+Kd  0.6 0.6 0.6
+Ks  0.1 0.1 0.1
+d  1.0
+Ns  150.0
+illum 2
+map_Kd C.tga
+map_Bump C_nm.tga
+
+
+
