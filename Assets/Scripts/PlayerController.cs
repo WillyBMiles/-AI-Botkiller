@@ -286,7 +286,7 @@ public class PlayerController : MonoBehaviour
         Vector3 checkPosition = transform.position + Vector3.up * originalHeight / 2f;
         
         // Check if there's an obstacle above using a sphere cast
-        bool hasObstacle = Physics.CheckSphere(checkPosition, originalRadius * 0.5f, slideHeadCheckLayerMask);
+        bool hasObstacle = Physics.CheckSphere(checkPosition, originalRadius * 0.2f, slideHeadCheckLayerMask);
         
         return !hasObstacle;
     }
