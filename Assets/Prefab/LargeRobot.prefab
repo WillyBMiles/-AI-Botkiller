@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7285033464138417582}
   - component: {fileID: 8293378079719693273}
   - component: {fileID: 8475493205824985986}
+  - component: {fileID: 6987465098957347821}
   m_Layer: 0
   m_Name: LargeRobot
   m_TagString: Untagged
@@ -101,6 +102,22 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &6987465098957347821
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8206601221979784558}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1f6eab73420548c4a8e21ea139a3285e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyShooting
+  lookTarget: {fileID: 0}
+  neckTransform: {fileID: 4888641229610597624}
+  neckRotationSpeed: 5
+  maxNeckAngle: 80
 --- !u!1001 &7406971804697922064
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -314,6 +331,11 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 6.104872, y: 6.5, z: 11.84537}
   m_Center: {x: -0.77, y: 0, z: -5.37}
+--- !u!4 &4888641229610597624 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2674338630853342952, guid: 967592c64774a1c4d8cef17e7e9abfd9, type: 3}
+  m_PrefabInstance: {fileID: 7406971804697922064}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &5546636085421324933 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: -6182521184564006763, guid: 967592c64774a1c4d8cef17e7e9abfd9, type: 3}
