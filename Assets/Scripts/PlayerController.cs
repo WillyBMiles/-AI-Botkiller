@@ -70,6 +70,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float recoilPositionAmount = 0.1f;
     [SerializeField] private float recoilRotationAmount = 5f;
     [SerializeField] private float recoilRecoverySpeed = 10f;
+    
+    [Header("Failsafe Settings")]
+    [SerializeField] private float fallThreshold = -50f;
 
     // Components
     private CharacterController characterController;
@@ -126,6 +129,9 @@ public class PlayerController : MonoBehaviour
     private float originalRadius;
     private Vector3 originalCenter;
     
+    // Failsafe variables
+    private Vector3 spawnPosition;
+    
     private void Awake()
     {
         characterController = GetComponent<CharacterController>();
@@ -168,6 +174,9 @@ public class PlayerController : MonoBehaviour
             gunStartPosition = gunTransform.localPosition;
             gunStartRotation = gunTransform.localRotation;
         }
+        
+        // Store spawn position for failsafe
+        spawnPosition = transform.position;
     }
     
     private void Update()
@@ -179,6 +188,7 @@ public class PlayerController : MonoBehaviour
         HandleMouseLook();
         HandleHeadBob();
         HandleGunBob();
+        HandleFallFailsafe();
     }
     
     private void HandleGroundCheck()
@@ -774,6 +784,31 @@ public class PlayerController : MonoBehaviour
         targetCameraPitch = Mathf.Clamp(targetCameraPitch, -maxLookAngle, maxLookAngle);
         
         targetYaw += yawRecoil;
+    }
+    
+    private void HandleFallFailsafe()
+    {
+        // Check if player has fallen below the threshold
+        if (transform.position.y < fallThreshold)
+        {
+            // Teleport player back to spawn position
+            characterController.enabled = false;
+            transform.position = spawnPosition;
+            characterController.enabled = true;
+            
+            // Reset velocity
+            currentVelocity = Vector3.zero;
+            verticalVelocity = 0f;
+            
+            // Exit special movement states
+            isWallRunning = false;
+            if (isSliding)
+            {
+                StopSlide();
+            }
+            
+            Debug.Log($"Player fell below {fallThreshold}, teleported back to spawn position.");
+        }
     }
     
     #endregion
