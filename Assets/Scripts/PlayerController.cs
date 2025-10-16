@@ -766,5 +766,15 @@ public class PlayerController : MonoBehaviour
         isRecoiling = true;
     }
     
+    public void ApplyCameraRecoil(float pitchRecoil, float yawRecoil)
+    {
+        // Apply recoil directly to the camera rotation targets
+        // This permanently affects the player's aim
+        targetCameraPitch += pitchRecoil;
+        targetCameraPitch = Mathf.Clamp(targetCameraPitch, -maxLookAngle, maxLookAngle);
+        
+        targetYaw += yawRecoil;
+    }
+    
     #endregion
 }

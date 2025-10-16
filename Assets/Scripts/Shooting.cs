@@ -24,6 +24,10 @@ public class Shooting : MonoBehaviour
     [SerializeField] private float bulletTrailDuration = 0.1f;
     [SerializeField] private float bulletTrailFadeSpeed = 5f;
     
+    [Header("Camera Recoil Settings")]
+    [SerializeField] private float cameraRecoilVertical = 1f;
+    [SerializeField] private float cameraRecoilHorizontal = 0.5f;
+    
     [Header("Components")]
     [SerializeField] private Player player;
     [SerializeField] private PlayerController playerController;
@@ -34,6 +38,8 @@ public class Shooting : MonoBehaviour
     
     // Bullet hit pool
     private Queue<GameObject> bulletHitPool = new Queue<GameObject>();
+    
+    // Camera recoil (no variables needed, applied directly)
     
     private void Awake()
     {
@@ -117,6 +123,9 @@ public class Shooting : MonoBehaviour
         {
             playerController.TriggerGunRecoil();
         }
+        
+        // Apply camera recoil
+        ApplyCameraRecoil();
         
         // Raycast from camera center
         Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
@@ -225,5 +234,22 @@ public class Shooting : MonoBehaviour
         {
             muzzleFlare.SetActive(false);
         }
+    }
+    
+    private void ApplyCameraRecoil()
+    {
+        if (playerController == null) return;
+        
+        // Apply recoil by directly modifying the PlayerController's camera rotation
+        // This permanently affects aim and requires player to compensate
+        
+        // Vertical recoil (kick up)
+        float verticalKick = -cameraRecoilVertical;
+        
+        // Horizontal recoil (random left/right)
+        float horizontalKick = Random.Range(-cameraRecoilHorizontal, cameraRecoilHorizontal);
+        
+        // Apply recoil to the player's look rotation
+        playerController.ApplyCameraRecoil(verticalKick, horizontalKick);
     }
 }

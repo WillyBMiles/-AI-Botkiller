@@ -5,6 +5,7 @@ public class Enemy : MonoBehaviour
     [Header("Enemy Stats")]
     [SerializeField] private float maxHealth = 100f;
     [SerializeField] private float currentHealth;
+    [SerializeField] private int pointValue = 1;
     
     [Header("Death Settings")]
     [SerializeField] private GameObject explosionPrefab;
@@ -74,4 +75,5 @@ public class Enemy : MonoBehaviour
     public float GetMaxHealth() => maxHealth;
     public bool IsDead() => isDead;
     public float GetHealthPercentage() => currentHealth / maxHealth;
+    public int GetPointValue() => pointValue;
 }
