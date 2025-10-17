@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!319 &31900000
+AvatarMask:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: RightBarrelMask
+  m_Mask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+  m_Elements:
+  - m_Path: 
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.003
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.003/robot_v3.unity_3.002
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.003/robot_v3.unity_3.002/robot_v3.unity_3.001
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.006
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.006/robot_v3.unity_3.005
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.006/robot_v3.unity_3.005/robot_v3.unity_3.004
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.007
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.007/robot_v3.unity_3.008
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.007/robot_v3.unity_3.008/robot_v3.unity_3.009
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.012
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.012/robot_v3.unity_3.011
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.012/robot_v3.unity_3.011/robot_v3.unity_3.010
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.017
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.017/robot_v3.unity_3.015
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.017/robot_v3.unity_3.015/robot_v3.unity_3.014
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.017/robot_v3.unity_3.015/robot_v3.unity_3.014/robot_v3.unity_3.019
+    m_Weight: 1
+  - m_Path: robot_v3.unity_3.017/robot_v3.unity_3.016
+    m_Weight: 0
+  - m_Path: robot_v3.unity_3.017/robot_v3.unity_3.016/robot_v3.unity_3.013
+    m_Weight: 0
+  - m_Path: robot_v3.unity_3.017/robot_v3.unity_3.016/robot_v3.unity_3.013/robot_v3.unity_3.018
+    m_Weight: 0

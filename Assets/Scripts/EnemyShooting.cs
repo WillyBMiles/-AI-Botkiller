@@ -37,6 +37,7 @@ public class EnemyShooting : MonoBehaviour
     [SerializeField] private float averageTrackingDuration = 2f;
     [SerializeField] private float projectileSpeed = 20f;
     [SerializeField] private float randomTargetRadius = 3f;
+    [SerializeField] private float randomOffsetChangeInterval = 1f;
     [SerializeField] private int burstsBeforeStrategyChange = 3;
     
     [Header("Components")]
@@ -57,6 +58,10 @@ public class EnemyShooting : MonoBehaviour
     private Vector3 lastPlayerPosition;
     private int burstsWithoutHit = 0;
     private bool hitThisBurst = false;
+    
+    // Random offset state
+    private Vector3 currentRandomOffset;
+    private float nextRandomOffsetTime = 0f;
     
     private void Awake()
     {
@@ -276,13 +281,18 @@ public class EnemyShooting : MonoBehaviour
     
     private Vector3 CalculateRandomOffset()
     {
-        // Add random offset around player
-        Vector3 randomOffset = new Vector3(
-            Random.Range(-randomTargetRadius, randomTargetRadius),
-            Random.Range(-randomTargetRadius * 0.5f, randomTargetRadius * 0.5f),
-            Random.Range(-randomTargetRadius, randomTargetRadius)
-        );
-        return playerTransform.position + randomOffset;
+        // Update random offset at intervals instead of every frame
+        if (Time.time >= nextRandomOffsetTime)
+        {
+            currentRandomOffset = new Vector3(
+                Random.Range(-randomTargetRadius, randomTargetRadius),
+                Random.Range(-randomTargetRadius * 0.5f, randomTargetRadius * 0.5f),
+                Random.Range(-randomTargetRadius, randomTargetRadius)
+            );
+            nextRandomOffsetTime = Time.time + randomOffsetChangeInterval;
+        }
+        
+        return playerTransform.position + currentRandomOffset;
     }
     
     private void CheckLineOfSight()

@@ -41,6 +41,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float slideJumpBoostTime = 0.5f;
     [SerializeField] private float slideJumpBoostMultiplier = 1.5f;
     [SerializeField] private LayerMask slideHeadCheckLayerMask;
+    [SerializeField] private float slideStuckSpeed = 2f;
+    [SerializeField] private float slideStuckThreshold = 0.1f;
     
     [Header("Mouse Look Settings")]
     [SerializeField] private float mouseSensitivity = 2f;
@@ -379,8 +381,20 @@ public class PlayerController : MonoBehaviour
     
     private void HandleSlideMovement()
     {
-        // Maintain slide direction and speed
-        currentVelocity = slideDirection * slideSpeed;
+        // Check if player is stuck (not moving despite being in slide)
+        bool isStuck = characterController.velocity.magnitude < slideStuckThreshold;
+        
+        if (isStuck && moveInput.magnitude > 0.1f)
+        {
+            // Player is stuck and trying to move - allow slow directional movement
+            Vector3 moveDirection = transform.right * moveInput.x + transform.forward * moveInput.y;
+            currentVelocity = moveDirection * slideStuckSpeed;
+        }
+        else
+        {
+            // Normal slide behavior - maintain slide direction and speed
+            currentVelocity = slideDirection * slideSpeed;
+        }
         
         // Apply gravity
         verticalVelocity += gravity * Time.deltaTime;
