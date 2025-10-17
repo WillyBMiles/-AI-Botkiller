@@ -110,7 +110,7 @@ public class EnemySpawnPoint : MonoBehaviour
             // Check if there's space before spawning
             if (!HasSpaceAvailable(validPrefabs[0]))
             {
-                Debug.Log($"EnemySpawnPoint on {gameObject.name}: No space available for more enemies.");
+                // Debug.Log($"EnemySpawnPoint on {gameObject.name}: No space available for more enemies.");
                 return enemiesSpawned > 0;
             }
             
@@ -262,7 +262,7 @@ public class EnemySpawnPoint : MonoBehaviour
         }
         else
         {
-            Debug.Log($"EnemySpawnPoint spawned {enemiesSpawned} enemies with total point value {currentPoints} (target: {pointValue})");
+            // Debug.Log($"EnemySpawnPoint spawned {enemiesSpawned} enemies with total point value {currentPoints} (target: {pointValue})");
         }
         
         return enemiesSpawned > 0;

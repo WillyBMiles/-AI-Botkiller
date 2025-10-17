@@ -87,7 +87,7 @@ public class EnemyProjectile : MonoBehaviour
         if (player != null)
         {
             player.TakeDamage(damage);
-            Debug.Log($"Projectile hit player for {damage} damage");
+            // Debug.Log($"Projectile hit player for {damage} damage");
             
             // Invoke hit event
             onHitPlayer?.Invoke();
@@ -133,7 +133,7 @@ public class EnemyProjectile : MonoBehaviour
         {
             hasHit = true;
             player.TakeDamage(damage);
-            Debug.Log($"Projectile hit player (trigger) for {damage} damage");
+            // Debug.Log($"Projectile hit player (trigger) for {damage} damage");
             
             // Invoke hit event
             onHitPlayer?.Invoke();

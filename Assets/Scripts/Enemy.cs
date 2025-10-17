@@ -29,7 +29,7 @@ public class Enemy : MonoBehaviour
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0f);
         
-        Debug.Log($"{gameObject.name} took {damage} damage. Health: {currentHealth}/{maxHealth}");
+        // Debug.Log($"{gameObject.name} took {damage} damage. Health: {currentHealth}/{maxHealth}");
         
         // Check if enemy died
         if (currentHealth <= 0f)
@@ -48,7 +48,7 @@ public class Enemy : MonoBehaviour
         currentHealth += amount;
         currentHealth = Mathf.Min(currentHealth, maxHealth);
         
-        Debug.Log($"{gameObject.name} healed {amount}. Health: {currentHealth}/{maxHealth}");
+        // Debug.Log($"{gameObject.name} healed {amount}. Health: {currentHealth}/{maxHealth}");
     }
     
     private void Die()
@@ -57,7 +57,7 @@ public class Enemy : MonoBehaviour
         
         isDead = true;
         
-        Debug.Log($"{gameObject.name} died!");
+        // Debug.Log($"{gameObject.name} died!");
         
         // Spawn explosion if prefab is assigned
         if (explosionPrefab != null)

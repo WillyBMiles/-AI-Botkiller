@@ -411,7 +411,7 @@ public class EnemyShooting : MonoBehaviour
         }
         
         currentStrategy = newStrategy;
-        Debug.Log($"Enemy changed targeting strategy to: {currentStrategy}");
+        // Debug.Log($"Enemy changed targeting strategy to: {currentStrategy}");
     }
     
     private void CheckInactivityTimeout()
@@ -419,7 +419,7 @@ public class EnemyShooting : MonoBehaviour
         // Check if enemy hasn't seen player in 3 minutes (180 seconds)
         if (Time.time - lastSeenPlayerTime > 180f)
         {
-            Debug.Log($"Enemy {gameObject.name} hasn't seen player in 3 minutes, destroying for efficiency.");
+            // Debug.Log($"Enemy {gameObject.name} hasn't seen player in 3 minutes, destroying for efficiency.");
             Destroy(gameObject);
             return;
         }

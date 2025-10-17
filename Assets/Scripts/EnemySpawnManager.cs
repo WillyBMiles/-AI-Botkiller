@@ -54,7 +54,7 @@ public class EnemySpawnManager : MonoBehaviour
             }
             else
             {
-                Debug.Log($"EnemySpawnManager: Auto-found {spawnPoints.Count} spawn points");
+                // Debug.Log($"EnemySpawnManager: Auto-found {spawnPoints.Count} spawn points");
             }
         }
     }
@@ -78,7 +78,7 @@ public class EnemySpawnManager : MonoBehaviour
             
             if (activeEnemies.Count > 0 && CheckForCamping())
             {
-                Debug.Log("No enemy activity detected for 30 seconds - forcing new wave to prevent camping.");
+                // Debug.Log("No enemy activity detected for 30 seconds - forcing new wave to prevent camping.");
                 // Force new wave
                 isWaitingForNextWave = true;
                 waveTimer = 0f;
@@ -123,7 +123,7 @@ public class EnemySpawnManager : MonoBehaviour
         // Calculate total points for this wave
         int totalPoints = Mathf.RoundToInt(initialWavePoints + (currentWave - 1) * pointIncreasePerWave);
         
-        Debug.Log($"Starting Wave {currentWave} with {totalPoints} points");
+        // Debug.Log($"Starting Wave {currentWave} with {totalPoints} points");
         
         // Select spawn points for this wave
         List<EnemySpawnPoint> selectedSpawnPoints = SelectSpawnPoints();
@@ -174,7 +174,7 @@ public class EnemySpawnManager : MonoBehaviour
                     
                     if (!spawned)
                     {
-                        Debug.Log($"Could not spawn {pointsForThisSpawn} points worth of enemies - all spawn points full");
+                        // Debug.Log($"Could not spawn {pointsForThisSpawn} points worth of enemies - all spawn points full");
                     }
                 }
                 
@@ -190,7 +190,7 @@ public class EnemySpawnManager : MonoBehaviour
             }
         }
         
-        Debug.Log($"Wave {currentWave} spawned at {selectedSpawnPoints.Count} spawn points. Total active enemies: {activeEnemies.Count}");
+        // Debug.Log($"Wave {currentWave} spawned at {selectedSpawnPoints.Count} spawn points. Total active enemies: {activeEnemies.Count}");
     }
     
     private bool CheckForCamping()
