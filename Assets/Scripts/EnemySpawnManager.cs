@@ -12,6 +12,7 @@ public class EnemySpawnManager : MonoBehaviour
     [SerializeField] private float pointIncreasePerWave = 2f;
     [SerializeField] private float delayBetweenWaves = 5f;
     [SerializeField] private float minDistanceFromPlayer = 20f;
+    [SerializeField] private float campingTimeout = 30f; // Force new wave if no shots for this long
     
     [Header("Spawn Point Selection")]
     [SerializeField] private int minSpawnPointsPerWave = 1;
@@ -25,6 +26,7 @@ public class EnemySpawnManager : MonoBehaviour
     private float waveTimer = 0f;
     private bool isWaitingForNextWave = false;
     private List<Enemy> activeEnemies = new List<Enemy>();
+    private float lastCampingCheckTime = 0f;
     
     private void Awake()
     {
@@ -69,16 +71,31 @@ public class EnemySpawnManager : MonoBehaviour
         // Clean up destroyed enemies from the active list
         activeEnemies.RemoveAll(enemy => enemy == null);
         
+        // Check for camping every 30 seconds
+        if (Time.time - lastCampingCheckTime >= campingTimeout)
+        {
+            lastCampingCheckTime = Time.time;
+            
+            if (activeEnemies.Count > 0 && CheckForCamping())
+            {
+                Debug.Log("No enemy activity detected for 30 seconds - forcing new wave to prevent camping.");
+                // Force new wave
+                isWaitingForNextWave = true;
+                waveTimer = 0f;
+            }
+        }
+        
         // Check if we should start a new wave
         if (isWaitingForNextWave)
         {
             waveTimer -= Time.deltaTime;
             
             // Only spawn if no enemies remain and timer has elapsed
-            if (waveTimer <= 0f && activeEnemies.Count == 0)
+            if (waveTimer <= 0f)
             {
                 SpawnNewWave();
                 isWaitingForNextWave = false;
+                waveTimer = delayBetweenWaves;
             }
         }
         else
@@ -120,7 +137,15 @@ public class EnemySpawnManager : MonoBehaviour
         // Distribute points among selected spawn points
         List<int> pointDistribution = DistributePoints(totalPoints, selectedSpawnPoints.Count);
         
+        // Reset wave counters for all spawn points
+        foreach (EnemySpawnPoint sp in selectedSpawnPoints)
+        {
+            sp.ResetWaveCounter();
+        }
+        
         // Spawn enemies at each selected spawn point
+        List<EnemySpawnPoint> availableSpawnPoints = new List<EnemySpawnPoint>(selectedSpawnPoints);
+        
         for (int i = 0; i < selectedSpawnPoints.Count; i++)
         {
             int pointsForThisSpawn = pointDistribution[i];
@@ -129,7 +154,29 @@ public class EnemySpawnManager : MonoBehaviour
                 // Track enemies before spawning
                 int enemiesBefore = FindObjectsOfType<Enemy>().Length;
                 
-                selectedSpawnPoints[i].SpawnEnemies(pointsForThisSpawn);
+                // Try to spawn at this point
+                bool spawned = selectedSpawnPoints[i].SpawnEnemies(pointsForThisSpawn);
+                
+                // If spawn failed due to space, try other available spawn points
+                if (!spawned && availableSpawnPoints.Count > 1)
+                {
+                    availableSpawnPoints.Remove(selectedSpawnPoints[i]);
+                    
+                    // Try redistributing to other spawn points
+                    foreach (EnemySpawnPoint alternatePoint in availableSpawnPoints)
+                    {
+                        if (alternatePoint.SpawnEnemies(pointsForThisSpawn))
+                        {
+                            spawned = true;
+                            break;
+                        }
+                    }
+                    
+                    if (!spawned)
+                    {
+                        Debug.Log($"Could not spawn {pointsForThisSpawn} points worth of enemies - all spawn points full");
+                    }
+                }
                 
                 // Track newly spawned enemies
                 Enemy[] allEnemies = FindObjectsOfType<Enemy>();
@@ -144,6 +191,40 @@ public class EnemySpawnManager : MonoBehaviour
         }
         
         Debug.Log($"Wave {currentWave} spawned at {selectedSpawnPoints.Count} spawn points. Total active enemies: {activeEnemies.Count}");
+    }
+    
+    private bool CheckForCamping()
+    {
+        // Sample up to 5 random enemies
+        int samplesToCheck = Mathf.Min(5, activeEnemies.Count);
+        
+        // Create a list of random indices
+        List<int> randomIndices = new List<int>();
+        for (int i = 0; i < samplesToCheck; i++)
+        {
+            randomIndices.Add(Random.Range(0, activeEnemies.Count));
+        }
+        
+        // Check the sampled enemies
+        for (int i = 0; i < samplesToCheck; i++)
+        {
+            Enemy enemy = activeEnemies[randomIndices[i]];
+            if (enemy == null) continue;
+            
+            EnemyShooting shooting = enemy.GetComponent<EnemyShooting>();
+            if (shooting != null)
+            {
+                float timeSinceLastShot = shooting.GetTimeSinceLastShot();
+                if (timeSinceLastShot < campingTimeout)
+                {
+                    // At least one sampled enemy has shot recently
+                    return false;
+                }
+            }
+        }
+        
+        // None of the sampled enemies have shot in the timeout period
+        return true;
     }
     
     private List<EnemySpawnPoint> SelectSpawnPoints()

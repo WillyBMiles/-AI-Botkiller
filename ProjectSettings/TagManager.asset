@@ -14,8 +14,8 @@ TagManager:
   - WallRunnable
   - Player
   - Enemy
-  - 
-  - 
+  - WallOrFloor
+  - EnemyBody
   - 
   - 
   - 

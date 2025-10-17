@@ -50,6 +50,8 @@ public class EnemyShooting : MonoBehaviour
     private float nextShotTime = 0f;
     private bool useLeftGun = true;
     private bool hasLineOfSight = false;
+    private float lastShotTime = 0f;
+    private float lastSeenPlayerTime = 0f;
     
     // Targeting strategy state
     private enum TargetingStrategy { AverageTracking, LeadTarget, DirectTracking, RandomOffset }
@@ -100,6 +102,10 @@ public class EnemyShooting : MonoBehaviour
         {
             lastPlayerPosition = playerTransform.position;
         }
+        
+        // Initialize timers
+        lastShotTime = Time.time;
+        lastSeenPlayerTime = Time.time;
     }
     
     private void Update()
@@ -110,46 +116,48 @@ public class EnemyShooting : MonoBehaviour
         HandleNeckRotation();
         HandleGunRotation();
         HandleShooting();
+        CheckInactivityTimeout();
     }
     
     private void HandleNeckRotation()
     {
         if (neckTransform == null || lookTarget == null) return;
         
-        // Calculate direction to target
-        Vector3 directionToTarget = lookTarget.position - neckTransform.position;
+        // Get parent transform (body)
+        Transform parentTransform = neckTransform.parent != null ? neckTransform.parent : transform;
         
-        // Project direction onto the horizontal plane (ignore Y difference)
-        // This ensures we only rotate around the Y axis
-        directionToTarget.y = 0f;
+        // Calculate direction to target in world space
+        Vector3 directionToTarget = lookTarget.position - neckTransform.position;
         
         // Check if direction is valid
         if (directionToTarget.sqrMagnitude < 0.001f) return;
         
-        // Calculate the target rotation (only Y axis)
-        Quaternion targetRotation = Quaternion.LookRotation(directionToTarget);
+        // Transform direction to parent's local space
+        Vector3 localDirection = parentTransform.InverseTransformDirection(directionToTarget);
         
-        // Get only the Y rotation from the target
-        Vector3 targetEuler = targetRotation.eulerAngles;
-        Quaternion yOnlyRotation = Quaternion.Euler(0f, targetEuler.y, 0f);
+        // Project onto local XZ plane (ignore local Y to only rotate around local Y axis)
+        localDirection.y = 0f;
         
-        // Calculate the angle difference from the neck's parent forward direction
-        // This allows us to clamp the rotation relative to the body
-        Transform parentTransform = neckTransform.parent != null ? neckTransform.parent : transform;
-        float angleToTarget = Vector3.SignedAngle(parentTransform.forward, directionToTarget, Vector3.up);
+        if (localDirection.sqrMagnitude < 0.001f) return;
+        
+        // Calculate angle around local Y axis
+        float angleToTarget = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
         
         // Clamp the angle to max neck rotation
         float clampedAngle = Mathf.Clamp(angleToTarget, -maxNeckAngle, maxNeckAngle);
         
-        // Calculate the final rotation
-        Quaternion clampedRotation = parentTransform.rotation * Quaternion.Euler(0f, clampedAngle, 0f);
+        // Get current local rotation
+        Vector3 currentLocalEuler = neckTransform.localEulerAngles;
         
-        // Smoothly rotate the neck towards the target
-        neckTransform.rotation = Quaternion.Slerp(
-            neckTransform.rotation,
-            clampedRotation,
-            Time.deltaTime * neckRotationSpeed
-        );
+        // Normalize current Y rotation to -180 to 180 range
+        float currentYaw = currentLocalEuler.y;
+        if (currentYaw > 180f) currentYaw -= 360f;
+        
+        // Smoothly interpolate to target yaw
+        float newYaw = Mathf.LerpAngle(currentYaw, clampedAngle, Time.deltaTime * neckRotationSpeed);
+        
+        // Apply only Y rotation, keep X and Z unchanged
+        neckTransform.localRotation = Quaternion.Euler(currentLocalEuler.x, newYaw, currentLocalEuler.z);
     }
     
     private void HandleGunRotation()
@@ -171,20 +179,20 @@ public class EnemyShooting : MonoBehaviour
     
     private void RotateGunOnXAxis(Transform gunTransform)
     {
-        // Calculate direction to target
+        // Calculate direction to target in world space
         Vector3 directionToTarget = lookTarget.position - gunTransform.position;
         
         // Check if direction is valid
         if (directionToTarget.sqrMagnitude < 0.001f) return;
         
-        // Transform direction to local space to work with local axes
-        Vector3 localDirection = gunTransform.parent != null 
-            ? gunTransform.parent.InverseTransformDirection(directionToTarget) 
-            : gunTransform.InverseTransformDirection(directionToTarget);
+        // Transform direction to gun's parent local space
+        Transform parentTransform = gunTransform.parent != null ? gunTransform.parent : transform;
+        Vector3 localDirection = parentTransform.InverseTransformDirection(directionToTarget);
         
-        // Calculate the pitch angle (rotation around X axis)
-        // We want to rotate around X to aim up/down
-        float targetPitch = -Mathf.Atan2(localDirection.y, new Vector2(localDirection.x, localDirection.z).magnitude) * Mathf.Rad2Deg;
+        // Calculate the pitch angle (rotation around local X axis)
+        // Atan2 of Y vs horizontal distance (XZ plane)
+        float horizontalDistance = new Vector2(localDirection.x, localDirection.z).magnitude;
+        float targetPitch = -Mathf.Atan2(localDirection.y, horizontalDistance) * Mathf.Rad2Deg;
         
         // Clamp the pitch angle
         targetPitch = Mathf.Clamp(targetPitch, -maxGunAngle, maxGunAngle);
@@ -313,6 +321,7 @@ public class EnemyShooting : MonoBehaviour
         {
             // Clear line of sight
             hasLineOfSight = true;
+            lastSeenPlayerTime = Time.time; // Update last seen time
         }
     }
     
@@ -405,8 +414,22 @@ public class EnemyShooting : MonoBehaviour
         Debug.Log($"Enemy changed targeting strategy to: {currentStrategy}");
     }
     
+    private void CheckInactivityTimeout()
+    {
+        // Check if enemy hasn't seen player in 3 minutes (180 seconds)
+        if (Time.time - lastSeenPlayerTime > 180f)
+        {
+            Debug.Log($"Enemy {gameObject.name} hasn't seen player in 3 minutes, destroying for efficiency.");
+            Destroy(gameObject);
+            return;
+        }
+    }
+    
     private void FireProjectile()
     {
+        // Update last shot time
+        lastShotTime = Time.time;
+        
         // Determine which barrel to use
         Transform barrelToUse = null;
         
@@ -491,6 +514,14 @@ public class EnemyShooting : MonoBehaviour
     private void OnProjectileHitPlayer()
     {
         hitThisBurst = true;
+    }
+    
+    /// <summary>
+    /// Gets the time since this enemy last fired a shot
+    /// </summary>
+    public float GetTimeSinceLastShot()
+    {
+        return Time.time - lastShotTime;
     }
     
     private void ShowMuzzleFlare(GameObject muzzleFlare)
