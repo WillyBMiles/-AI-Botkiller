@@ -157,7 +157,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b9a90cf02730fdf4495698263f65cbd9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AmmoPickup
-  ammoAmount: 60
+  ammoAmount: 100
   respawnCooldown: 30
   respawnDistance: 50
   pickupVisual: {fileID: 0}
