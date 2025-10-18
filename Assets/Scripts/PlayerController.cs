@@ -73,6 +73,11 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float recoilRotationAmount = 5f;
     [SerializeField] private float recoilRecoverySpeed = 10f;
     
+    [Header("Fast Fall Settings")]
+    [SerializeField] private bool enableFastFall = true;
+    [SerializeField] private float fastFallGravityMultiplier = 2f;
+    [SerializeField] private float fastFallSpeedMultiplier = 2f;
+    
     [Header("Failsafe Settings")]
     [SerializeField] private float fallThreshold = -50f;
 
@@ -130,6 +135,9 @@ public class PlayerController : MonoBehaviour
     private float originalHeight;
     private float originalRadius;
     private Vector3 originalCenter;
+    
+    // Fast fall variables
+    private bool isFastFalling;
     
     // Failsafe variables
     private Vector3 spawnPosition;
@@ -208,7 +216,13 @@ public class PlayerController : MonoBehaviour
         // Exit wall run when grounded
         if (isGrounded && isWallRunning)
         {
-            isWallRunning = false;
+            StopWallRun();
+        }
+        
+        // Exit fast fall when grounded
+        if (isGrounded && isFastFalling)
+        {
+            isFastFalling = false;
         }
     }
     
@@ -341,12 +355,15 @@ public class PlayerController : MonoBehaviour
             else if (isWallRunning)
             {
                 // Stop wall run if angle becomes too steep
-                isWallRunning = false;
+                StopWallRun();
             }
         }
         else
         {
-            isWallRunning = false;
+            if (isWallRunning)
+            {
+                StopWallRun();
+            }
         }
     }
     
@@ -356,11 +373,21 @@ public class PlayerController : MonoBehaviour
         // Reset double jump when starting wall run
         jumpsRemaining = enableDoubleJump ? 2 : 1;
         
+        // Cancel fast fall when starting wall run
+        isFastFalling = false;
+        
         // Give upward boost if not already moving upward
         if (verticalVelocity <= wallRunInitialUpwardBoost)
         {
             verticalVelocity = wallRunInitialUpwardBoost;
         }
+    }
+    
+    private void StopWallRun()
+    {
+        isWallRunning = false;
+        // Cancel fast fall when stopping wall run
+        isFastFalling = false;
     }
     
     private void HandleMovement()
@@ -423,8 +450,13 @@ public class PlayerController : MonoBehaviour
         
         currentVelocity = Vector3.Lerp(currentVelocity, targetVelocity, lerpSpeed * Time.deltaTime);
         
-        // Apply gravity
-        verticalVelocity += gravity * Time.deltaTime;
+        // Apply gravity (with fast fall multiplier if active)
+        float gravityToApply = gravity;
+        if (isFastFalling)
+        {
+            gravityToApply *= fastFallGravityMultiplier;
+        }
+        verticalVelocity += gravityToApply * Time.deltaTime;
         
         // Combine horizontal and vertical movement
         Vector3 finalMovement = currentVelocity + Vector3.up * verticalVelocity;
@@ -468,6 +500,13 @@ public class PlayerController : MonoBehaviour
         
         // Apply reduced gravity (or slide gravity if not moving)
         float gravityToApply = moveInput.magnitude > 0.1f ? wallRunGravity : wallRunSlideGravity;
+        
+        // Apply fast fall multiplier if active
+        if (isFastFalling)
+        {
+            gravityToApply *= fastFallGravityMultiplier;
+        }
+        
         verticalVelocity += gravityToApply * Time.deltaTime;
         
         // Combine horizontal and vertical movement
@@ -722,7 +761,7 @@ public class PlayerController : MonoBehaviour
                 currentVelocity = wallNormal * wallJumpOutForce + wallForward * wallJumpForwardForce;
                 
                 // Exit wall run
-                isWallRunning = false;
+                StopWallRun();
                 jumpsRemaining--;
             }
             else
@@ -742,6 +781,9 @@ public class PlayerController : MonoBehaviour
                 // On double jump, add directional boost based on input
                 if (jumpsRemaining == 1)
                 {
+                    // Cancel fast fall on double jump
+                    isFastFalling = false;
+                    
                     // Apply directional boost if there's movement input
                     if (moveInput.magnitude > 0.1f)
                     {
@@ -770,6 +812,14 @@ public class PlayerController : MonoBehaviour
         if (context.performed)
         {
             slideInput = true;
+            
+            // Activate fast fall if in the air and falling (including wall running)
+            if (enableFastFall && !isGrounded && verticalVelocity < 0)
+            {
+                isFastFalling = true;
+                // Multiply current fall speed by the multiplier
+                verticalVelocity *= fastFallSpeedMultiplier;
+            }
         }
         else if (context.canceled)
         {
