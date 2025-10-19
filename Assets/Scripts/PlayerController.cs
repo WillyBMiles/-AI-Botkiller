@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
+    // Note: Requires AudioManager in scene
     [Header("Movement Settings")]
     [SerializeField] private float moveSpeed = 6f;
     [SerializeField] private float acceleration = 10f;
@@ -84,6 +85,7 @@ public class PlayerController : MonoBehaviour
     // Components
     private CharacterController characterController;
     private CapsuleCollider capsuleCollider;
+    private Scoring scoring;
     
     // Movement variables
     private Vector2 moveInput;
@@ -146,6 +148,7 @@ public class PlayerController : MonoBehaviour
     {
         characterController = GetComponent<CharacterController>();
         capsuleCollider = GetComponent<CapsuleCollider>();
+        scoring = GetComponent<Scoring>();
         
         // Store original character controller dimensions
         originalHeight = characterController.height;
@@ -283,6 +286,9 @@ public class PlayerController : MonoBehaviour
             capsuleCollider.radius = originalRadius * slideHeightReduction;
             capsuleCollider.center = new Vector3(originalCenter.x, originalCenter.y * slideHeightReduction, originalCenter.z);
         }
+        
+        // Start slide sound
+        AudioManager.StartSlideSound(transform, 0.2f);
     }
     
     private void StopSlide()
@@ -291,6 +297,9 @@ public class PlayerController : MonoBehaviour
         
         isSliding = false;
         slideTimer = 0f;
+        
+        // Stop slide sound
+        AudioManager.StopSlideSound(0.2f);
         
         // Restore character controller dimensions
         characterController.height = originalHeight;
@@ -380,6 +389,12 @@ public class PlayerController : MonoBehaviour
         if (verticalVelocity <= wallRunInitialUpwardBoost)
         {
             verticalVelocity = wallRunInitialUpwardBoost;
+        }
+        
+        // Notify scoring system of wall touch
+        if (scoring != null)
+        {
+            scoring.OnGrounded(); // Reuse OnGrounded to reset plummet timer
         }
     }
     
@@ -566,6 +581,13 @@ public class PlayerController : MonoBehaviour
             // Apply landing bob
             StartCoroutine(LandingBob());
         }
+        
+        // Update scoring system every frame when grounded (not just on landing)
+        if (isGrounded && scoring != null)
+        {
+            scoring.OnGrounded();
+        }
+        
         wasGrounded = isGrounded;
         
         // Bob when moving on the ground OR wall running
@@ -760,6 +782,16 @@ public class PlayerController : MonoBehaviour
                 // Combine outward force from wall and forward momentum
                 currentVelocity = wallNormal * wallJumpOutForce + wallForward * wallJumpForwardForce;
                 
+                // Notify scoring system
+                if (scoring != null)
+                {
+                    scoring.OnWallJump();
+                    scoring.OnAnyJump();
+                }
+                
+                // Play jump sound
+                AudioManager.PlayJumpSound(transform.position);
+                
                 // Exit wall run
                 StopWallRun();
                 jumpsRemaining--;
@@ -767,22 +799,41 @@ public class PlayerController : MonoBehaviour
             else
             {
                 // Normal jump or double jump
+                bool isDoubleJump = (jumpsRemaining == 1);
                 float jumpHeightToUse = (jumpsRemaining == 2) ? jumpHeight : doubleJumpHeight;
                 
                 // Apply slide jump boost if applicable
                 if (slideJumpBoost)
                 {
                     jumpHeightToUse *= slideJumpBoostMultiplier;
+                    
+                    // Notify scoring system of slide boost jump
+                    if (scoring != null)
+                    {
+                        scoring.OnSlideBoostJump();
+                    }
+                    
+                    // Play slide jump sound
+                    AudioManager.PlaySlideJumpSound(transform.position);
                 }
                 
                 // Calculate jump velocity using physics formula: v = sqrt(2 * h * g)
                 verticalVelocity = Mathf.Sqrt(jumpHeightToUse * 2f * -gravity);
                 
                 // On double jump, add directional boost based on input
-                if (jumpsRemaining == 1)
+                if (isDoubleJump)
                 {
                     // Cancel fast fall on double jump
                     isFastFalling = false;
+                    
+                    // Notify scoring system of double jump
+                    if (scoring != null)
+                    {
+                        scoring.OnDoubleJump();
+                    }
+                    
+                    // Play double jump sound
+                    AudioManager.PlayDoubleJumpSound(transform.position);
                     
                     // Apply directional boost if there's movement input
                     if (moveInput.magnitude > 0.1f)
@@ -794,6 +845,18 @@ public class PlayerController : MonoBehaviour
                     {
                         currentVelocity = Vector3.zero;
                     }
+                }
+                
+                // Notify scoring system of any jump
+                if (scoring != null)
+                {
+                    scoring.OnAnyJump();
+                }
+                
+                // Play normal jump sound if not already played
+                if (!isDoubleJump && !slideJumpBoost)
+                {
+                    AudioManager.PlayJumpSound(transform.position);
                 }
                 
                 jumpsRemaining--;
@@ -880,6 +943,22 @@ public class PlayerController : MonoBehaviour
     public bool IsSliding() => isSliding;
     public bool IsGrounded() => isGrounded;
     public bool IsFastFalling() => isFastFalling;
+    public Vector3 GetCurrentVelocity() => currentVelocity;
+    
+    /// <summary>
+    /// Sets the player's velocity (used by bounce pads, launch pads, etc.)
+    /// </summary>
+    public void SetVelocity(Vector3 newVelocity)
+    {
+        currentVelocity = new Vector3(newVelocity.x, 0f, newVelocity.z);
+        verticalVelocity = newVelocity.y;
+        
+        // Cancel fast fall when launched upward
+        if (verticalVelocity > 0f)
+        {
+            isFastFalling = false;
+        }
+    }
     
     #endregion
 }

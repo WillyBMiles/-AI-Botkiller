@@ -482,6 +482,9 @@ public class EnemyShooting : MonoBehaviour
             ShowMuzzleFlare(rightMuzzleFlare);
         }
         
+        // Play enemy shoot sound
+        AudioManager.PlayEnemyShootSound(barrel.position);
+        
         // Spawn projectile at barrel position
         GameObject projectile = Instantiate(projectilePrefab, barrel.position, barrel.rotation);
         

@@ -19,6 +19,7 @@ public class Player : MonoBehaviour
     
     [Header("Components")]
     [SerializeField] private PlayerController playerController;
+    [SerializeField] private Scoring scoring;
     
     private bool isDead = false;
     
@@ -32,6 +33,11 @@ public class Player : MonoBehaviour
         if (playerController == null)
         {
             playerController = GetComponent<PlayerController>();
+        }
+        
+        if (scoring == null)
+        {
+            scoring = GetComponent<Scoring>();
         }
         
         // Hide lose screen at start
@@ -59,6 +65,9 @@ public class Player : MonoBehaviour
         
         currentHealth -= damage;
         currentHealth = Mathf.Max(currentHealth, 0f);
+        
+        // Play player got shot sound
+        AudioManager.PlayPlayerGotShotSound(transform.position);
         
         // Update health bar
         UpdateHealthBar();
@@ -126,6 +135,15 @@ public class Player : MonoBehaviour
         isDead = true;
         
         Debug.Log("Player died!");
+        
+        // Play player lose sound
+        AudioManager.PlayPlayerLoseSound(transform.position);
+        
+        // End combo without awarding points
+        if (scoring != null)
+        {
+            scoring.OnPlayerDeath();
+        }
         
         // Disable player controller
         if (playerController != null)

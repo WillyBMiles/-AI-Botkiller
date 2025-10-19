@@ -125,11 +125,15 @@ public class Shooting : MonoBehaviour
             Invoke(nameof(HideMuzzleFlare), 0.02f);
         }
         
-        // Trigger gun recoil
+        // Apply recoil
         if (playerController != null)
         {
             playerController.TriggerGunRecoil();
         }
+        
+        // Play shoot sound
+        Vector3 soundPosition = gunBarrelTransform != null ? gunBarrelTransform.position : playerCamera.transform.position;
+        AudioManager.PlayPlayerShootSound(soundPosition);
         
         // Apply camera recoil
         ApplyCameraRecoil();
@@ -155,10 +159,16 @@ public class Shooting : MonoBehaviour
                 
                 enemy.TakeDamage(damage);
                 
+                // Play enemy hit sound
+                AudioManager.PlayEnemyGotShotSound(hit.point);
+                
                 // Award trick points if enemy died
                 if (willDie && scoring != null)
                 {
-                    scoring.OnEnemyKilled();
+                    scoring.OnEnemyKilled(enemy.transform.position);
+                    
+                    // Play enemy die sound
+                    AudioManager.PlayEnemyDieSound(enemy.transform.position);
                 }
             }
             

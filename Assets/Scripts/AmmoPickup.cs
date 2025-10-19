@@ -78,6 +78,9 @@ public class AmmoPickup : MonoBehaviour
                     // Give ammo to player
                     playerComponent.AddAmmo(ammoAmount);
                     
+                    // Play ammo pickup sound
+                    AudioManager.PlayAmmoPickupSound(transform.position);
+                    
                     // Hide pickup and start cooldown
                     PickupCollected();
                 }
