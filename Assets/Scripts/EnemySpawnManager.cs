@@ -18,6 +18,8 @@ public class EnemySpawnManager : MonoBehaviour
     [SerializeField] private int minSpawnPointsPerWave = 1;
     [SerializeField] private int maxSpawnPointsPerWave = 3;
     [SerializeField] private float spawnPointClusterRadius = 30f;
+    [SerializeField] private bool preferSpawnsNearPlayer = true;
+    [SerializeField] private float maxDistanceFromPlayer = 50f;
     
     [Header("References")]
     [SerializeField] private Transform playerTransform;
@@ -229,7 +231,7 @@ public class EnemySpawnManager : MonoBehaviour
     
     private List<EnemySpawnPoint> SelectSpawnPoints()
     {
-        // Filter spawn points that are far enough from the player
+        // Filter spawn points based on distance from player
         List<EnemySpawnPoint> validSpawnPoints = new List<EnemySpawnPoint>();
         
         foreach (EnemySpawnPoint spawnPoint in spawnPoints)
@@ -237,9 +239,39 @@ public class EnemySpawnManager : MonoBehaviour
             if (spawnPoint != null && playerTransform != null)
             {
                 float distance = Vector3.Distance(spawnPoint.transform.position, playerTransform.position);
-                if (distance >= minDistanceFromPlayer)
+                
+                if (preferSpawnsNearPlayer)
                 {
-                    validSpawnPoints.Add(spawnPoint);
+                    // Prefer spawns near player: must be outside min distance but within max distance
+                    if (distance >= minDistanceFromPlayer && distance <= maxDistanceFromPlayer)
+                    {
+                        validSpawnPoints.Add(spawnPoint);
+                    }
+                }
+                else
+                {
+                    // Original behavior: just outside min distance
+                    if (distance >= minDistanceFromPlayer)
+                    {
+                        validSpawnPoints.Add(spawnPoint);
+                    }
+                }
+            }
+        }
+        
+        if (validSpawnPoints.Count == 0)
+        {
+            Debug.LogWarning("EnemySpawnManager: No spawn points in valid range, using all spawn points outside min distance");
+            // Fallback to any spawn point outside min distance
+            foreach (EnemySpawnPoint spawnPoint in spawnPoints)
+            {
+                if (spawnPoint != null && playerTransform != null)
+                {
+                    float distance = Vector3.Distance(spawnPoint.transform.position, playerTransform.position);
+                    if (distance >= minDistanceFromPlayer)
+                    {
+                        validSpawnPoints.Add(spawnPoint);
+                    }
                 }
             }
         }
@@ -260,11 +292,29 @@ public class EnemySpawnManager : MonoBehaviour
             return validSpawnPoints;
         }
         
-        // Select spawn points that are clustered together
+        // Select spawn points - prefer ones closer to player if enabled
         List<EnemySpawnPoint> selectedSpawnPoints = new List<EnemySpawnPoint>();
         
-        // Pick a random starting spawn point
-        EnemySpawnPoint firstSpawnPoint = validSpawnPoints[Random.Range(0, validSpawnPoints.Count)];
+        // Pick starting spawn point (prefer closer to player if enabled)
+        EnemySpawnPoint firstSpawnPoint;
+        if (preferSpawnsNearPlayer && playerTransform != null)
+        {
+            // Weight spawn points by proximity to player (closer = higher weight)
+            List<float> playerProximityWeights = new List<float>();
+            foreach (EnemySpawnPoint sp in validSpawnPoints)
+            {
+                float distance = Vector3.Distance(sp.transform.position, playerTransform.position);
+                // Inverse distance weight (closer = higher weight)
+                float weight = 1f / Mathf.Max(distance, 1f);
+                playerProximityWeights.Add(weight);
+            }
+            firstSpawnPoint = WeightedRandomSelection(validSpawnPoints, playerProximityWeights);
+        }
+        else
+        {
+            firstSpawnPoint = validSpawnPoints[Random.Range(0, validSpawnPoints.Count)];
+        }
+        
         selectedSpawnPoints.Add(firstSpawnPoint);
         validSpawnPoints.Remove(firstSpawnPoint);
         

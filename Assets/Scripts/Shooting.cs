@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
 
 public class Shooting : MonoBehaviour
 {
@@ -32,9 +33,16 @@ public class Shooting : MonoBehaviour
     [SerializeField] private Player player;
     [SerializeField] private PlayerController playerController;
     
+    [Header("Score UI")]
+    [SerializeField] private TextMeshProUGUI scoreText;
+    [SerializeField] private TextMeshProUGUI gameOverScoreText;
+    
     // Shooting state
     private bool isShooting = false;
     private float nextFireTime = 0f;
+    
+    // Score tracking
+    private int score = 0;
     
     // Bullet hit pool
     private Queue<GameObject> bulletHitPool = new Queue<GameObject>();
@@ -70,6 +78,9 @@ public class Shooting : MonoBehaviour
         {
             muzzleFlare.SetActive(false);
         }
+        
+        // Initialize score display
+        UpdateScoreDisplay();
     }
     
     private void Update()
@@ -143,7 +154,17 @@ public class Shooting : MonoBehaviour
             Enemy enemy = hit.rigidbody?.GetComponent<Enemy>();
             if (enemy != null)
             {
+                // Check if enemy will die from this damage
+                bool willDie = enemy.GetCurrentHealth() <= damage;
+                
                 enemy.TakeDamage(damage);
+                
+                // Increment score if enemy died
+                if (willDie)
+                {
+                    score++;
+                    UpdateScoreDisplay();
+                }
             }
             
             // Instantiate bullet hit effect at hit point
@@ -252,4 +273,23 @@ public class Shooting : MonoBehaviour
         // Apply recoil to the player's look rotation
         playerController.ApplyCameraRecoil(verticalKick, horizontalKick);
     }
+    
+    private void UpdateScoreDisplay()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = score.ToString();
+        }
+    }
+    
+    public void ShowGameOverScore()
+    {
+        if (gameOverScoreText != null)
+        {
+            gameOverScoreText.text = "Your score is: " + score;
+        }
+    }
+    
+    // Public getter for score
+    public int GetScore() => score;
 }
