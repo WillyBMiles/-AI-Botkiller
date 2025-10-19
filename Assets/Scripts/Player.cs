@@ -19,7 +19,6 @@ public class Player : MonoBehaviour
     
     [Header("Components")]
     [SerializeField] private PlayerController playerController;
-    [SerializeField] private Shooting shooting;
     
     private bool isDead = false;
     
@@ -33,11 +32,6 @@ public class Player : MonoBehaviour
         if (playerController == null)
         {
             playerController = GetComponent<PlayerController>();
-        }
-        
-        if (shooting == null)
-        {
-            shooting = GetComponent<Shooting>();
         }
         
         // Hide lose screen at start
@@ -154,12 +148,6 @@ public class Player : MonoBehaviour
             loseScreenCanvasGroup.alpha = 1f;
             loseScreenCanvasGroup.interactable = true;
             loseScreenCanvasGroup.blocksRaycasts = true;
-        }
-        
-        // Show game over score
-        if (shooting != null)
-        {
-            shooting.ShowGameOverScore();
         }
     }
     

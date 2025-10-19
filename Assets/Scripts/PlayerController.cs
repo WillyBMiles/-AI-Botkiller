@@ -875,5 +875,11 @@ public class PlayerController : MonoBehaviour
         }
     }
     
+    // Public getters for player state
+    public bool IsWallRunning() => isWallRunning;
+    public bool IsSliding() => isSliding;
+    public bool IsGrounded() => isGrounded;
+    public bool IsFastFalling() => isFastFalling;
+    
     #endregion
 }
