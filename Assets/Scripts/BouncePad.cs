@@ -67,6 +67,9 @@ public class BouncePad : MonoBehaviour
         // Apply the bounce to the player
         playerController.SetVelocity(bounceVelocity);
         
+        // Give one air jump (like having just jumped once)
+        playerController.GiveOneJump();
+        
         // Play bounce pad sound
         AudioManager.PlayBouncePadSound(contactPoint);
         

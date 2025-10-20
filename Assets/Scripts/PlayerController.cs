@@ -287,6 +287,12 @@ public class PlayerController : MonoBehaviour
             capsuleCollider.center = new Vector3(originalCenter.x, originalCenter.y * slideHeightReduction, originalCenter.z);
         }
         
+        // Notify scoring system (sliding counts as ground touch for plummet)
+        if (scoring != null)
+        {
+            scoring.OnGrounded();
+        }
+        
         // Start slide sound
         AudioManager.StartSlideSound(transform, 0.2f);
     }
@@ -582,8 +588,8 @@ public class PlayerController : MonoBehaviour
             StartCoroutine(LandingBob());
         }
         
-        // Update scoring system every frame when grounded (not just on landing)
-        if (isGrounded && scoring != null)
+        // Update scoring system every frame when grounded or sliding (not just on landing)
+        if ((isGrounded || isSliding) && scoring != null)
         {
             scoring.OnGrounded();
         }
@@ -876,12 +882,15 @@ public class PlayerController : MonoBehaviour
         {
             slideInput = true;
             
-            // Activate fast fall if in the air and falling (including wall running)
-            if (enableFastFall && !isGrounded && verticalVelocity < 0)
+            // Activate fast fall if in the air (even when moving upward)
+            if (enableFastFall && !isGrounded)
             {
                 isFastFalling = true;
-                // Multiply current fall speed by the multiplier
-                verticalVelocity *= fastFallSpeedMultiplier;
+                // Only multiply downward velocity, not upward
+                if (verticalVelocity < 0)
+                {
+                    verticalVelocity *= fastFallSpeedMultiplier;
+                }
             }
         }
         else if (context.canceled)
@@ -958,6 +967,22 @@ public class PlayerController : MonoBehaviour
         {
             isFastFalling = false;
         }
+    }
+    
+    /// <summary>
+    /// Resets jump count (used by bounce pads, wall runs, etc.)
+    /// </summary>
+    public void ResetJumps()
+    {
+        jumpsRemaining = enableDoubleJump ? 2 : 1;
+    }
+    
+    /// <summary>
+    /// Gives one air jump (used by bounce pads)
+    /// </summary>
+    public void GiveOneJump()
+    {
+        jumpsRemaining = 1;
     }
     
     #endregion
